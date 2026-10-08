@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Upload Penjualan Jago</title>
-    <!-- Memuat library PapaParse untuk membaca CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
@@ -75,6 +74,10 @@
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
+            // INI KUNCINYA: Membuang semua spasi tersembunyi di judul kolom
+            transformHeader: function(header) {
+                return header.trim(); 
+            },
             complete: function(results) {
                 const rawData = results.data;
                 parsedData = [];
@@ -82,7 +85,8 @@
                 for (let i = 0; i < rawData.length; i++) {
                     let row = rawData[i];
                     
-                    if(row['Jagoan ID']) {
+                    // Kita buat pengecekan yang lebih fleksibel
+                    if(row['Name'] || row['Jagoan ID']) {
                         let nama = row['Name'] || '';
                         let id = row['Jagoan ID'] || '';
                         
@@ -100,14 +104,7 @@
                         let unsold = leftover + expired;
                         
                         parsedData.push([
-                            nama,
-                            id,
-                            tanggalSaja,
-                            item,
-                            sold,
-                            unsold,
-                            expired,
-                            leftover
+                            nama, id, tanggalSaja, item, sold, unsold, expired, leftover
                         ]);
                     }
                 }
@@ -118,7 +115,7 @@
                     showPesan(`Berhasil membaca ${parsedData.length} baris data yang valid dari CSV. Siap dikirim!`, "berhasil");
                 } else {
                     btnProses.disabled = true;
-                    showPesan("Tidak ada data yang valid ditemukan di dalam file CSV ini.", "gagal");
+                    showPesan("Data valid tidak ditemukan. Pastikan format file sudah benar.", "gagal");
                 }
             },
             error: function(err) {
@@ -138,9 +135,7 @@
         fetch(scriptURL, {
             method: 'POST',
             body: JSON.stringify(parsedData),
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            }
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         })
         .then(response => response.json())
         .then(data => {
@@ -159,7 +154,7 @@
             }
         })
         .catch(error => {
-            showPesan("Terjadi kesalahan koneksi/pengiriman: " + error, "gagal");
+            showPesan("Terjadi kesalahan koneksi: " + error, "gagal");
             btnProses.innerText = "Coba Kirim Lagi";
             btnProses.disabled = false;
             fileInput.disabled = false;
