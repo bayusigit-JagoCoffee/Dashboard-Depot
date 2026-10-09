@@ -4,77 +4,78 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Dashboard & Upload Jago</title>
-    <!-- Library Pembaca CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <!-- Library Pembuat Grafik -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 100%; max-width: 700px; margin-bottom: 20px; text-align: center; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { background-color: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 100%; max-width: 900px; margin: 0 auto 25px auto; text-align: center; }
         h2 { color: #2c3e50; margin-top: 0; }
-        p.subtitle { color: #7f8c8d; margin-bottom: 25px; font-size: 14px; line-height: 1.5; }
-        .upload-area { border: 2px dashed #3498db; border-radius: 8px; padding: 30px 20px; margin-bottom: 20px; background-color: #f0f8ff; cursor: pointer; transition: 0.3s; }
-        .upload-area:hover { background-color: #d6eaf8; }
+        .subtitle { color: #7f8c8d; margin-bottom: 25px; font-size: 14px; }
+        
+        /* Gaya Tombol & Input */
+        .upload-area { border: 2px dashed #3498db; border-radius: 8px; padding: 20px; margin-bottom: 15px; background-color: #f0f8ff; cursor: pointer; }
         input[type="file"] { display: none; }
-        .btn-blue { display: inline-block; padding: 10px 20px; background-color: #3498db; color: white; border-radius: 6px; font-weight: bold; margin-bottom: 10px; cursor: pointer; border: none; }
+        .btn-blue { padding: 10px 20px; background-color: #3498db; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; display: inline-block;}
         .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
         .btn-orange { width: 100%; padding: 12px; background-color: #e67e22; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        #fileName { font-size: 13px; color: #555; font-weight: bold; margin-top: 10px; display: block; }
         .pesan { margin-top: 15px; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 5px; display: none; }
         .berhasil { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .gagal { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .proses { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .chart-container { position: relative; height: 350px; width: 100%; margin-top: 20px; }
+        
+        /* Gaya Tabel Dashboard */
+        .table-wrapper { width: 100%; overflow-x: auto; margin-top: 20px; border: 1px solid #bdc3c7; border-radius: 8px; }
+        table { border-collapse: collapse; min-width: 100%; font-size: 13px; white-space: nowrap; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: center; }
+        th { background-color: #34495e; color: white; position: sticky; top: 0; }
+        .col-nama { text-align: left; position: sticky; left: 0; background-color: #ecf0f1; font-weight: bold; color: #2c3e50; z-index: 2; box-shadow: 2px 0 5px rgba(0,0,0,0.1);}
+        .hijau { background-color: #aed581 !important; color: #000; font-weight: bold; }
+        .status-simpan { font-size: 11px; color: #27ae60; position: fixed; bottom: 10px; right: 10px; background: white; padding: 5px 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: none;}
     </style>
 </head>
 <body>
 
-<!-- KOTAK UPLOAD -->
+<!-- KOTAK UPLOAD CSV -->
 <div class="container">
     <h2>Upload Penjualan</h2>
-    <div class="upload-area" id="dropZone" onclick="document.getElementById('csvFile').click()">
-        <span class="btn-blue" style="pointer-events: none;">Pilih File CSV</span>
+    <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+        <span class="btn-blue">Pilih File CSV</span>
         <input type="file" id="csvFile" accept=".csv" />
-        <span id="fileName">Atau tarik file ke sini</span>
+        <span id="fileName" style="display:block; margin-top:10px; font-weight:bold;">Atau tarik file ke sini</span>
     </div>
     <button id="btnProses" class="btn-green" disabled>Kirim ke Sheets</button>
     <div id="pesanUpload" class="pesan"></div>
 </div>
 
-<!-- KOTAK GRAFIK (DASHBOARD) -->
-<div class="container">
-    <h2>Dashboard Penjualan</h2>
-    <p class="subtitle">Tarik data langsung dari Google Sheets untuk melihat performa produk.</p>
-    <button id="btnLoadChart" class="btn-orange">Muat Data & Tampilkan Grafik</button>
-    <div id="pesanChart" class="pesan"></div>
+<!-- KOTAK DASHBOARD TABEL -->
+<div class="container" style="max-width: 95%;">
+    <h2>Tabel Performa & Ceklis Jagoan</h2>
+    <p class="subtitle">Penjualan > 120 otomatis hijau. Klik kotak centang untuk menyimpan status Restok/Settle langsung ke Sheets.</p>
+    <button id="btnLoadTable" class="btn-orange">Tarik Data & Tampilkan Tabel</button>
+    <div id="pesanTable" class="pesan"></div>
     
-    <div class="chart-container">
-        <canvas id="salesChart"></canvas>
-    </div>
+    <div id="tableContainer" class="table-wrapper"></div>
 </div>
 
+<!-- Notifikasi pop-up kecil saat ceklis disimpan -->
+<div id="notifSimpan" class="status-simpan">Ceklis tersimpan! ✓</div>
+
 <script>
-    // === 1. MASUKKAN URL APPS SCRIPT ANDA DI SINI ===
+    // =======================================================
+    // PASTE URL APPS SCRIPT VERSI BARU ANDA DI BAWAH INI:
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
-    
-    // === LOGIKA UPLOAD CSV (Sama seperti sebelumnya) ===
-    let parsedData = [];
-    const fileInput = document.getElementById('csvFile');
-    const fileNameDisplay = document.getElementById('fileName');
-    const btnProses = document.getElementById('btnProses');
-    const pesanUpload = document.getElementById('pesanUpload');
+    // =======================================================
 
     function showPesan(elemen, teks, tipe) {
-        elemen.innerHTML = teks;
-        elemen.className = 'pesan ' + tipe;
-        elemen.style.display = 'block';
+        elemen.innerHTML = teks; elemen.className = 'pesan ' + tipe; elemen.style.display = 'block';
     }
 
-    fileInput.addEventListener('change', function(e) {
+    // --- LOGIKA UPLOAD CSV ---
+    let parsedData = [];
+    document.getElementById('csvFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
-        fileNameDisplay.innerText = "File: " + file.name;
+        document.getElementById('fileName').innerText = "File: " + file.name;
         
         Papa.parse(file, {
             header: true, skipEmptyLines: true,
@@ -94,94 +95,121 @@
                     }
                 });
                 if(parsedData.length > 0) {
-                    btnProses.disabled = false;
-                    showPesan(pesanUpload, `Siap mengirim ${parsedData.length} baris.`, "berhasil");
+                    document.getElementById('btnProses').disabled = false;
+                    showPesan(document.getElementById('pesanUpload'), `Siap mengirim ${parsedData.length} baris.`, "berhasil");
                 }
             }
         });
     });
 
-    btnProses.addEventListener('click', function() {
-        btnProses.disabled = true;
-        showPesan(pesanUpload, "Sedang mengirim data...", "proses");
+    document.getElementById('btnProses').addEventListener('click', function() {
+        this.disabled = true;
+        showPesan(document.getElementById('pesanUpload'), "Sedang mengirim data...", "proses");
         fetch(scriptURL, { method: 'POST', body: JSON.stringify(parsedData), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
         .then(res => res.json()).then(data => {
-            if(data.status === 'sukses') showPesan(pesanUpload, "Sukses dikirim!", "berhasil");
-            else showPesan(pesanUpload, "Gagal: " + data.pesan, "gagal");
+            if(data.status === 'sukses') {
+                showPesan(document.getElementById('pesanUpload'), "Sukses dikirim!", "berhasil");
+                setTimeout(() => document.getElementById('btnLoadTable').click(), 1000); // Otomatis muat tabel
+            }
+            else showPesan(document.getElementById('pesanUpload'), "Gagal: " + data.pesan, "gagal");
         });
     });
 
-    // === LOGIKA DASHBOARD GRAFIK (BARU) ===
-    const btnLoadChart = document.getElementById('btnLoadChart');
-    const pesanChart = document.getElementById('pesanChart');
-    let myChart = null; // Menyimpan grafik agar bisa dihapus/diperbarui
+    // --- LOGIKA DASHBOARD TABEL ---
+    document.getElementById('btnLoadTable').addEventListener('click', function() {
+        this.disabled = true; this.innerText = 'Menarik Data dari Sheets...';
+        showPesan(document.getElementById('pesanTable'), "Sedang merangkum data, mohon tunggu...", "proses");
 
-    btnLoadChart.addEventListener('click', function() {
-        btnLoadChart.disabled = true;
-        btnLoadChart.innerText = 'Menarik Data dari Sheets...';
-        showPesan(pesanChart, "Sedang mengunduh data, mohon tunggu...", "proses");
-
-        // Mengambil data menggunakan GET request
         fetch(scriptURL)
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             if(data.status === 'sukses') {
-                const rawData = data.data; // Array data dari Sheets
-                
-                // 1. Kumpulkan data penjualan berdasarkan Nama Produk (Kolom ke-4 atau index 3)
-                let penjualanProduk = {};
-                rawData.forEach(row => {
-                    let namaProduk = row[3]; // Item Name ada di kolom D (index 3)
-                    let terjual = parseInt(row[4]) || 0; // Sold ada di kolom E (index 4)
-                    
-                    if(namaProduk) {
-                        penjualanProduk[namaProduk] = (penjualanProduk[namaProduk] || 0) + terjual;
-                    }
-                });
-
-                // 2. Siapkan data untuk Chart.js
-                const labels = Object.keys(penjualanProduk);
-                const chartData = Object.values(penjualanProduk);
-
-                // 3. Hapus grafik lama jika sudah ada
-                if(myChart) { myChart.destroy(); }
-
-                // 4. Gambar Grafik Baru
-                const ctx = document.getElementById('salesChart').getContext('2d');
-                myChart = new Chart(ctx, {
-                    type: 'bar', // Bisa diganti 'pie' atau 'line'
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Total Produk Terjual (Sold)',
-                            data: chartData,
-                            backgroundColor: '#3498db',
-                            borderRadius: 5
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: true } }
-                    }
-                });
-
-                showPesan(pesanChart, "Grafik berhasil dimuat!", "berhasil");
-                btnLoadChart.innerText = 'Perbarui Grafik';
-                btnLoadChart.disabled = false;
-
+                bangunTabel(data.dataSales, data.dataCeklis);
+                showPesan(document.getElementById('pesanTable'), "Tabel berhasil dimuat!", "berhasil");
+                this.innerText = 'Perbarui Tabel';
+                this.disabled = false;
             } else {
-                showPesan(pesanChart, "Gagal menarik data: " + data.pesan, "gagal");
-                btnLoadChart.innerText = 'Coba Lagi';
-                btnLoadChart.disabled = false;
+                showPesan(document.getElementById('pesanTable'), "Gagal: " + data.pesan, "gagal");
+                this.innerText = 'Coba Lagi'; this.disabled = false;
             }
-        })
-        .catch(error => {
-            showPesan(pesanChart, "Kesalahan koneksi: " + error, "gagal");
-            btnLoadChart.innerText = 'Coba Lagi';
-            btnLoadChart.disabled = false;
+        }).catch(err => {
+            showPesan(document.getElementById('pesanTable'), "Error Koneksi: " + err, "gagal");
+            this.innerText = 'Coba Lagi'; this.disabled = false;
         });
     });
+
+    function bangunTabel(dataSales, dataCeklis) {
+        let jagoanData = {}; 
+        let listTanggal = new Set();
+        let ceklisMap = {};
+
+        // 1. Rekap Data Penjualan (CSV)
+        dataSales.forEach(row => {
+            let nama = row[0]; let id = row[1]; let tgl = row[2]; let sold = parseInt(row[4]) || 0;
+            if(!id) return;
+            listTanggal.add(tgl);
+            if(!jagoanData[id]) jagoanData[id] = { nama: nama, harian: {} };
+            jagoanData[id].harian[tgl] = (jagoanData[id].harian[tgl] || 0) + sold; // Total penjualan per hari
+        });
+
+        // 2. Rekap Data Ceklis (dari Sheet DataCeklis)
+        dataCeklis.forEach(row => {
+            let id = row[0]; let tgl = row[1]; let restok = row[2]; let settle = row[3];
+            let key = id + "_" + tgl;
+            ceklisMap[key] = { restok: (restok === true || restok === "true"), settle: (settle === true || settle === "true") };
+        });
+
+        let arrTgl = Array.from(listTanggal).sort(); // Urutkan tanggal
+
+        // 3. Bangun HTML Tabel
+        let html = '<table><thead><tr><th class="col-nama" rowspan="2">Nama</th>';
+        arrTgl.forEach(tgl => { html += `<th colspan="3">${tgl}</th>`; }); // Header Tanggal
+        html += '</tr><tr>';
+        arrTgl.forEach(tgl => { html += '<th>Penjualan</th><th>Restok</th><th>Settle</th>'; }); // Sub-header
+        html += '</tr></thead><tbody>';
+
+        // 4. Isi Baris Jagoan
+        for(let id in jagoanData) {
+            let p = jagoanData[id];
+            html += `<tr><td class="col-nama">${p.nama}</td>`;
+            
+            arrTgl.forEach(tgl => {
+                let terjual = p.harian[tgl] || 0;
+                let bgHijau = terjual > 120 ? 'hijau' : ''; // Logika pewarnaan otomatis > 120
+                let key = id + "_" + tgl;
+                let cRestok = ceklisMap[key] && ceklisMap[key].restok ? 'checked' : '';
+                let cSettle = ceklisMap[key] && ceklisMap[key].settle ? 'checked' : '';
+
+                html += `<td class="${bgHijau}">${terjual}</td>`;
+                html += `<td><input type="checkbox" onchange="simpanCeklis(this, '${id}', '${tgl}', 'Restok')" ${cRestok}></td>`;
+                html += `<td><input type="checkbox" onchange="simpanCeklis(this, '${id}', '${tgl}', 'Settle')" ${cSettle}></td>`;
+            });
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        document.getElementById('tableContainer').innerHTML = html;
+    }
+
+    // --- FUNGSI MENGIRIM STATUS CEKLIS KE GOOGLE SHEETS ---
+    function simpanCeklis(checkbox, id, tanggal, tipe) {
+        checkbox.disabled = true; // Kunci sementara agar tidak di-spam klik
+        let nilaiBaru = checkbox.checked;
+
+        fetch(scriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'update_ceklis', id: id, tanggal: tanggal, tipe: tipe, value: nilaiBaru }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        }).then(res => res.json()).then(res => {
+            checkbox.disabled = false;
+            let notif = document.getElementById('notifSimpan');
+            notif.style.display = 'block';
+            setTimeout(() => notif.style.display = 'none', 2000); // Tampilkan pop up "tersimpan" 2 detik
+        }).catch(err => {
+            checkbox.checked = !nilaiBaru; // Batalkan centang jika koneksi gagal
+            checkbox.disabled = false;
+            alert("Gagal menyimpan ceklis! Pastikan koneksi internet stabil.");
+        });
+    }
 </script>
 
 </body>
