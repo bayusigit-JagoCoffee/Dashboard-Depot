@@ -39,6 +39,7 @@
         th { background-color: #34495e; color: white; }
         td.text-left { text-align: left; font-weight: bold; }
         .badge-rank { display: inline-block; width: 22px; height: 22px; line-height: 22px; border-radius: 50%; background: #3498db; color: white; font-weight: bold; font-size: 11px; }
+        tr.row-total { background-color: #eaeded; font-weight: bold; }
 
         /* Dropdown & Chart */
         select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-weight: bold; margin-bottom: 15px; }
@@ -157,7 +158,7 @@
         });
     }
 
-    // --- PIPELINE ANALISIS DATA (MENGHASILKAN OUTPUT 1-6) ---
+    // --- PIPELINE ANALISIS DATA ---
     function prosesDanTampilkanSemua(data) {
         let rankSales = {}, rankLeftover = {}, rankWasteJagoan = {}, rankWasteProduk = {};
         let matrixSales = {}, matrixWaste = {};
@@ -165,10 +166,8 @@
 
         data.forEach(row => {
             let nama = row[0];
-            
-            // Format tanggal murni dari string tanpa konversi objek Date (Anti-Shift UTC)
             let rawTgl = row[2] ? row[2].toString().trim() : '';
-            let tgl = rawTgl.split(' ')[0]; // Mengambil '01 Oct 26' atau 'YYYY-MM-DD' murni
+            let tgl = rawTgl.split(' ')[0];
             
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
@@ -215,10 +214,15 @@
         document.querySelector(`#${elementId} tbody`).innerHTML = html;
     }
 
+    // --- RENDER TABEL PIVOT + TOTAL HARIAN PER TANGGAL ---
     function renderTabelPivot(containerId, matrixData, arrProduk, arrTgl) {
         let html = '<table><thead><tr><th class="text-left">Nama Produk</th>';
         arrTgl.forEach(tgl => { html += `<th>${tgl}</th>`; });
         html += '<th>Total</th></tr></thead><tbody>';
+
+        let totalPerTanggal = {};
+        arrTgl.forEach(tgl => { totalPerTanggal[tgl] = 0; });
+        let grandTotal = 0;
 
         arrProduk.forEach(p => {
             let totalRow = 0;
@@ -226,10 +230,20 @@
             arrTgl.forEach(tgl => {
                 let val = matrixData[p] && matrixData[p][tgl] ? matrixData[p][tgl] : 0;
                 totalRow += val;
+                totalPerTanggal[tgl] += val;
                 html += `<td>${val}</td>`;
             });
+            grandTotal += totalRow;
             html += `<td><b>${totalRow}</b></td></tr>`;
         });
+
+        // TAMBAHAN: Baris Total Harian per Tanggal di Paling Bawah
+        html += '<tr class="row-total"><td class="text-left">Total</td>';
+        arrTgl.forEach(tgl => {
+            html += `<td>${totalPerTanggal[tgl]}</td>`;
+        });
+        html += `<td>${grandTotal}</td></tr>`;
+
         html += '</tbody></table>';
         document.getElementById(containerId).innerHTML = html;
     }
@@ -277,7 +291,7 @@
         });
     }
 
-    // --- HANDLER UPLOAD FILE CSV (FITUR BATCHING & REDIRECT SAFE) ---
+    // --- HANDLER UPLOAD FILE CSV ---
     let parsedDataUpload = [];
     document.getElementById('csvFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -293,8 +307,6 @@
                     let id = row['Jagoan ID'] || row['Jagoan Id'] || row['jagoan id'];
                     if(id) {
                         let nama = row['Name'] || '';
-                        
-                        // Pembacaan Tanggal Murni String (Dipisah Karakter Spasi)
                         let rawApprove = row['Approved At'] ? row['Approved At'].trim() : '';
                         let tanggal = rawApprove ? rawApprove.split(' ')[0] : '';
                         
@@ -337,7 +349,7 @@
                 try {
                     resData = JSON.parse(text);
                 } catch(e) {
-                    throw new Error("Respon dari Google bukan JSON. Pastikan Akses Deployment = 'Siapa saja (Anyone)'");
+                    throw new Error("Respon dari Google bukan JSON.");
                 }
                 
                 if (resData.status !== 'sukses') {
