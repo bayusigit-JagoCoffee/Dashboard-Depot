@@ -124,7 +124,10 @@
 </div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
+    // =======================================================
+    // PASTE URL APPS SCRIPT ANDA DI BAWAH INI:
+    const scriptURL = 'URL_APPS_SCRIPT_ANDA_DI_SINI'; 
+    // =======================================================
 
     let rawSalesData = [];
     let chartTotal = null;
@@ -140,7 +143,7 @@
         evt.currentTarget.classList.add("active");
     }
 
-    // --- LOAD DATA OTOMATIS SAAT BUKAN WEB ---
+    // --- LOAD DATA OTOMATIS SAAT BUKA WEB ---
     window.onload = function() { tarikData(); };
 
     function tarikData() {
@@ -162,7 +165,7 @@
 
         data.forEach(row => {
             let nama = row[0];
-            let tgl = row[2] ? row[2].toString().substring(0, 10) : ''; // Potong jam, ambil tanggal YYYY-MM-DD / DD-MM-YYYY
+            let tgl = row[2] ? row[2].toString().substring(0, 10) : ''; 
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
             let waste = parseInt(row[6]) || 0;
@@ -173,15 +176,11 @@
             setTanggal.add(tgl);
             setProduk.add(produk);
 
-            // Output 1, 2, 3: Agregasi Jagoan
             rankSales[nama] = (rankSales[nama] || 0) + sold;
             rankLeftover[nama] = (rankLeftover[nama] || 0) + leftover;
             rankWasteJagoan[nama] = (rankWasteJagoan[nama] || 0) + waste;
-
-            // Output 4: Agregasi Waste Produk
             rankWasteProduk[produk] = (rankWasteProduk[produk] || 0) + waste;
 
-            // Output 5 & 6: Matrix Harian
             if(!matrixSales[produk]) matrixSales[produk] = {};
             matrixSales[produk][tgl] = (matrixSales[produk][tgl] || 0) + sold;
 
@@ -192,21 +191,17 @@
         let arrTgl = Array.from(setTanggal).sort();
         let arrProduk = Array.from(setProduk).sort();
 
-        // Render Output 1–4 (Ranking)
         renderTabelRank('tblRankSales', rankSales, 'Terjual');
         renderTabelRank('tblRankLeftover', rankLeftover, 'Leftover');
         renderTabelRank('tblRankWasteJagoan', rankWasteJagoan, 'Waste');
         renderTabelRank('tblRankWasteProduk', rankWasteProduk, 'Waste');
 
-        // Render Output 5 & 6 (Tabel Pivot Harian)
         renderTabelPivot('containerTblSalesHarian', matrixSales, arrProduk, arrTgl);
         renderTabelPivot('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
 
-        // Render Grafik (Output 5)
         renderGrafikSales(matrixSales, arrProduk, arrTgl);
     }
 
-    // --- HELPER RENDER TABEL RANKING (OUTPUT 1-4) ---
     function renderTabelRank(elementId, dataObj, labelNilai) {
         let sorted = Object.keys(dataObj).map(key => [key, dataObj[key]]).sort((a, b) => b[1] - a[1]);
         let html = '';
@@ -216,7 +211,6 @@
         document.querySelector(`#${elementId} tbody`).innerHTML = html;
     }
 
-    // --- HELPER RENDER TABEL HARIAN (OUTPUT 5 & 6) ---
     function renderTabelPivot(containerId, matrixData, arrProduk, arrTgl) {
         let html = '<table><thead><tr><th class="text-left">Nama Produk</th>';
         arrTgl.forEach(tgl => { html += `<th>${tgl}</th>`; });
@@ -236,9 +230,7 @@
         document.getElementById(containerId).innerHTML = html;
     }
 
-    // --- HELPER RENDER GRAFIK (OUTPUT 5) ---
     function renderGrafikSales(matrixSales, arrProduk, arrTgl) {
-        // 1. Grafik Total Semua Produk Harian
         let totalHarian = arrTgl.map(tgl => {
             let sum = 0;
             arrProduk.forEach(p => { sum += (matrixSales[p] && matrixSales[p][tgl]) ? matrixSales[p][tgl] : 0; });
@@ -246,7 +238,7 @@
         });
 
         if(chartTotal) chartTotal.destroy();
-        ctxTotal = document.getElementById('chartTotalSales').getContext('2d');
+        let ctxTotal = document.getElementById('chartTotalSales').getContext('2d');
         chartTotal = new Chart(ctxTotal, {
             type: 'line',
             data: {
@@ -256,12 +248,10 @@
             options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // 2. Populate Dropdown Produk
         let select = document.getElementById('selectProduk');
         select.innerHTML = '';
         arrProduk.forEach(p => { select.innerHTML += `<option value="${p}">${p}</option>`; });
 
-        // Build Grafik Per Produk Pertama
         window.currentMatrixSales = matrixSales;
         window.currentArrTgl = arrTgl;
         updateChartProduk();
@@ -272,7 +262,7 @@
         let dataProduk = window.currentArrTgl.map(tgl => (window.currentMatrixSales[pSelected] && window.currentMatrixSales[pSelected][tgl]) ? window.currentMatrixSales[pSelected][tgl] : 0);
 
         if(chartProduk) chartProduk.destroy();
-        ctxProduk = document.getElementById('chartPerProduk').getContext('2d');
+        let ctxProduk = document.getElementById('chartPerProduk').getContext('2d');
         chartProduk = new Chart(ctxProduk, {
             type: 'bar',
             data: {
@@ -283,7 +273,7 @@
         });
     }
 
-    // --- HANDLER UPLOAD FILE CSV ---
+    // --- HANDLER UPLOAD FILE CSV (FITUR BATCHING/CHUNKING CEPAT) ---
     let parsedDataUpload = [];
     document.getElementById('csvFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -312,18 +302,47 @@
         });
     });
 
-    document.getElementById('btnProses').addEventListener('click', function() {
+    document.getElementById('btnProses').addEventListener('click', async function() {
         this.disabled = true;
         let pesanUpload = document.getElementById('pesanUpload');
-        pesanUpload.className = 'pesan proses'; pesanUpload.innerText = 'Mengirim data...'; pesanUpload.style.display = 'block';
+        pesanUpload.className = 'pesan proses'; 
+        pesanUpload.style.display = 'block';
 
-        fetch(scriptURL, { method: 'POST', body: JSON.stringify(parsedDataUpload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
-        .then(res => res.json()).then(data => {
-            if(data.status === 'sukses') {
-                pesanUpload.className = 'pesan berhasil'; pesanUpload.innerText = 'Berhasil diunggah! Memperbarui grafik...';
-                setTimeout(() => { pesanUpload.style.display = 'none'; tarikData(); }, 1500);
+        const CHUNK_SIZE = 300; // Dikirim per 300 baris agar tidak gantung
+        const totalData = parsedDataUpload.length;
+
+        for (let i = 0; i < totalData; i += CHUNK_SIZE) {
+            const chunk = parsedDataUpload.slice(i, i + CHUNK_SIZE);
+            const progress = Math.min(i + CHUNK_SIZE, totalData);
+            pesanUpload.innerText = `Mengirim data... (${progress} / ${totalData} baris)`;
+
+            try {
+                let response = await fetch(scriptURL, { 
+                    method: 'POST', 
+                    body: JSON.stringify(chunk), 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+                });
+                let resData = await response.json();
+                
+                if (resData.status !== 'sukses') {
+                    throw new Error(resData.pesan || "Gagal mengirim potongan data");
+                }
+            } catch (err) {
+                pesanUpload.className = 'pesan gagal';
+                pesanUpload.innerText = 'Gagal terkirim di baris ke-' + i + ': ' + err.message;
+                this.disabled = false;
+                return;
             }
-        });
+        }
+
+        pesanUpload.className = 'pesan berhasil'; 
+        pesanUpload.innerText = `Selesai! Berhasil mengunggah total ${totalData} baris. Memperbarui analisis...`;
+        
+        setTimeout(() => { 
+            pesanUpload.style.display = 'none'; 
+            tarikData(); 
+            this.disabled = false;
+        }, 1500);
     });
 </script>
 </body>
