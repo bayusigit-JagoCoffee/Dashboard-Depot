@@ -308,7 +308,7 @@
         pesanUpload.className = 'pesan proses'; 
         pesanUpload.style.display = 'block';
 
-        const CHUNK_SIZE = 300; // Dikirim per 300 baris agar tidak gantung
+        const CHUNK_SIZE = 300; 
         const totalData = parsedDataUpload.length;
 
         for (let i = 0; i < totalData; i += CHUNK_SIZE) {
@@ -320,9 +320,17 @@
                 let response = await fetch(scriptURL, { 
                     method: 'POST', 
                     body: JSON.stringify(chunk), 
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    redirect: 'follow'
                 });
-                let resData = await response.json();
+                
+                let text = await response.text();
+                let resData;
+                try {
+                    resData = JSON.parse(text);
+                } catch(e) {
+                    throw new Error("Respon dari Google bukan JSON. Pastikan Deployment Akses = 'Siapa saja (Anyone)'");
+                }
                 
                 if (resData.status !== 'sukses') {
                     throw new Error(resData.pesan || "Gagal mengirim potongan data");
@@ -334,6 +342,16 @@
                 return;
             }
         }
+
+        pesanUpload.className = 'pesan berhasil'; 
+        pesanUpload.innerText = `Selesai! Berhasil mengunggah total ${totalData} baris. Memperbarui analisis...`;
+        
+        setTimeout(() => { 
+            pesanUpload.style.display = 'none'; 
+            tarikData(); 
+            this.disabled = false;
+        }, 1500);
+    });
 
         pesanUpload.className = 'pesan berhasil'; 
         pesanUpload.innerText = `Selesai! Berhasil mengunggah total ${totalData} baris. Memperbarui analisis...`;
