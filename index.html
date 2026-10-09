@@ -165,7 +165,11 @@
 
         data.forEach(row => {
             let nama = row[0];
-            let tgl = row[2] ? row[2].toString().substring(0, 10) : ''; 
+            
+            // Format tanggal murni dari string tanpa konversi objek Date (Anti-Shift UTC)
+            let rawTgl = row[2] ? row[2].toString().trim() : '';
+            let tgl = rawTgl.split(' ')[0]; // Mengambil '01 Oct 26' atau 'YYYY-MM-DD' murni
+            
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
             let waste = parseInt(row[6]) || 0;
@@ -273,7 +277,7 @@
         });
     }
 
-    // --- HANDLER UPLOAD FILE CSV (FITUR BATCHING/CHUNKING CEPAT) ---
+    // --- HANDLER UPLOAD FILE CSV (FITUR BATCHING & REDIRECT SAFE) ---
     let parsedDataUpload = [];
     document.getElementById('csvFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -289,7 +293,11 @@
                     let id = row['Jagoan ID'] || row['Jagoan Id'] || row['jagoan id'];
                     if(id) {
                         let nama = row['Name'] || '';
-                        let tanggal = row['Approved At'] ? row['Approved At'].substring(0, 10) : '';
+                        
+                        // Pembacaan Tanggal Murni String (Dipisah Karakter Spasi)
+                        let rawApprove = row['Approved At'] ? row['Approved At'].trim() : '';
+                        let tanggal = rawApprove ? rawApprove.split(' ')[0] : '';
+                        
                         let item = row['Item Name'] || '';
                         let sold = parseInt(row['Sold']) || 0;
                         let exp = parseInt(row['Expired']) || 0;
@@ -329,7 +337,7 @@
                 try {
                     resData = JSON.parse(text);
                 } catch(e) {
-                    throw new Error("Respon dari Google bukan JSON. Pastikan Deployment Akses = 'Siapa saja (Anyone)'");
+                    throw new Error("Respon dari Google bukan JSON. Pastikan Akses Deployment = 'Siapa saja (Anyone)'");
                 }
                 
                 if (resData.status !== 'sukses') {
@@ -342,16 +350,6 @@
                 return;
             }
         }
-
-        pesanUpload.className = 'pesan berhasil'; 
-        pesanUpload.innerText = `Selesai! Berhasil mengunggah total ${totalData} baris. Memperbarui analisis...`;
-        
-        setTimeout(() => { 
-            pesanUpload.style.display = 'none'; 
-            tarikData(); 
-            this.disabled = false;
-        }, 1500);
-    });
 
         pesanUpload.className = 'pesan berhasil'; 
         pesanUpload.innerText = `Selesai! Berhasil mengunggah total ${totalData} baris. Memperbarui analisis...`;
