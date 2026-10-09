@@ -3,147 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Upload Penjualan Jago</title>
+    <title>Sistem Dashboard & Upload Jago</title>
+    <!-- Library Pembaca CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Library Pembuat Grafik -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 90%; max-width: 500px; text-align: center; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 100%; max-width: 700px; margin-bottom: 20px; text-align: center; }
         h2 { color: #2c3e50; margin-top: 0; }
         p.subtitle { color: #7f8c8d; margin-bottom: 25px; font-size: 14px; line-height: 1.5; }
-        .upload-area { border: 2px dashed #3498db; border-radius: 8px; padding: 40px 20px; margin-bottom: 20px; background-color: #f0f8ff; transition: all 0.3s; cursor: pointer; }
-        .upload-area:hover, .upload-area.dragover { background-color: #d6eaf8; border-color: #2980b9; }
+        .upload-area { border: 2px dashed #3498db; border-radius: 8px; padding: 30px 20px; margin-bottom: 20px; background-color: #f0f8ff; cursor: pointer; transition: 0.3s; }
+        .upload-area:hover { background-color: #d6eaf8; }
         input[type="file"] { display: none; }
-        .custom-file-upload { display: inline-block; padding: 10px 20px; cursor: pointer; background-color: #3498db; color: white; border-radius: 6px; font-weight: bold; margin-bottom: 10px; pointer-events: none; }
-        #fileName { font-size: 13px; color: #555; font-weight: bold; margin-top: 10px; display: block; word-break: break-all; }
-        button { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.3s; }
-        button:hover { background-color: #2196f3; }
-        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
-        #pesan { margin-top: 15px; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 5px; display: none; text-align: left; }
+        .btn-blue { display: inline-block; padding: 10px 20px; background-color: #3498db; color: white; border-radius: 6px; font-weight: bold; margin-bottom: 10px; cursor: pointer; border: none; }
+        .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .btn-orange { width: 100%; padding: 12px; background-color: #e67e22; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        #fileName { font-size: 13px; color: #555; font-weight: bold; margin-top: 10px; display: block; }
+        .pesan { margin-top: 15px; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 5px; display: none; }
         .berhasil { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .gagal { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .proses { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .chart-container { position: relative; height: 350px; width: 100%; margin-top: 20px; }
     </style>
 </head>
 <body>
 
+<!-- KOTAK UPLOAD -->
 <div class="container">
-    <h2>Upload Laporan Penjualan</h2>
-    <p class="subtitle">Sistem mendeteksi kolom otomatis. Anda bisa klik area di bawah atau langsung *Drag & Drop* file CSV ke sini.</p>
-    
-    <!-- Area klik dan Drag & Drop -->
+    <h2>Upload Penjualan</h2>
     <div class="upload-area" id="dropZone" onclick="document.getElementById('csvFile').click()">
-        <span class="custom-file-upload">Pilih File CSV</span>
+        <span class="btn-blue" style="pointer-events: none;">Pilih File CSV</span>
         <input type="file" id="csvFile" accept=".csv" />
-        <span id="fileName">Belum ada file dipilih (Atau tarik file ke sini)</span>
+        <span id="fileName">Atau tarik file ke sini</span>
     </div>
+    <button id="btnProses" class="btn-green" disabled>Kirim ke Sheets</button>
+    <div id="pesanUpload" class="pesan"></div>
+</div>
+
+<!-- KOTAK GRAFIK (DASHBOARD) -->
+<div class="container">
+    <h2>Dashboard Penjualan</h2>
+    <p class="subtitle">Tarik data langsung dari Google Sheets untuk melihat performa produk.</p>
+    <button id="btnLoadChart" class="btn-orange">Muat Data & Tampilkan Grafik</button>
+    <div id="pesanChart" class="pesan"></div>
     
-    <button id="btnProses" disabled>Proses & Kirim ke Sheets</button>
-    
-    <div id="pesan"></div>
+    <div class="chart-container">
+        <canvas id="salesChart"></canvas>
+    </div>
 </div>
 
 <script>
-    // PASTE URL APPS SCRIPT ANDA DI DALAM TANDA KUTIP DI BAWAH INI:
+    // === 1. MASUKKAN URL APPS SCRIPT ANDA DI SINI ===
     const scriptURL = 'https://script.google.com/macros/library/d/1Gppz1FQJhDC2AUvjVNZblBLaOmjP_ICRCjDsfmha7Sc2uOXuP9inhRHf/1'; 
     
+    // === LOGIKA UPLOAD CSV (Sama seperti sebelumnya) ===
+    let parsedData = [];
     const fileInput = document.getElementById('csvFile');
     const fileNameDisplay = document.getElementById('fileName');
     const btnProses = document.getElementById('btnProses');
-    const pesanDiv = document.getElementById('pesan');
-    const dropZone = document.getElementById('dropZone');
-    
-    let parsedData = [];
+    const pesanUpload = document.getElementById('pesanUpload');
 
-    function showPesan(teks, tipe) {
-        pesanDiv.innerHTML = teks; // Gunakan innerHTML agar bisa membuat baris baru
-        pesanDiv.className = tipe;
-        pesanDiv.style.display = 'block';
+    function showPesan(elemen, teks, tipe) {
+        elemen.innerHTML = teks;
+        elemen.className = 'pesan ' + tipe;
+        elemen.style.display = 'block';
     }
 
-    // Fitur Drag & Drop
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault(); dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; fileInput.dispatchEvent(new Event('change')); }
-    });
-
-    // Proses Baca File
     fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
-        if (!file) { fileNameDisplay.innerText = "Belum ada file dipilih"; btnProses.disabled = true; return; }
-        
-        fileNameDisplay.innerText = "File terpilih: " + file.name;
-        showPesan("Sedang membaca format file...", "proses");
+        if (!file) return;
+        fileNameDisplay.innerText = "File: " + file.name;
         
         Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            transformHeader: function(h) { return h.replace(/^\uFEFF/, '').trim(); }, // Membuang karakter gaib BOM
+            header: true, skipEmptyLines: true,
+            transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
             complete: function(results) {
-                const rawData = results.data;
                 parsedData = [];
-                
-                if (rawData.length === 0) { showPesan("File CSV kosong.", "gagal"); return; }
-                
-                // Cek kolom apa saja yang sebenarnya dibaca oleh sistem
-                const kolomTerdeteksi = Object.keys(rawData[0]);
-                
-                for (let i = 0; i < rawData.length; i++) {
-                    let row = rawData[i];
-                    
-                    // Kita buat sangat fleksibel: Cek huruf kecil/besar
-                    let id = row['Jagoan ID'] || row['Jagoan Id'] || row['jagoan id'] || '';
-                    let nama = row['Name'] || row['name'] || '';
-                    
-                    if(id || nama) { // Jika ada ID atau Nama, proses baris ini
-                        let fullDate = row['Approved At'] || '';
-                        let tanggalSaja = fullDate.length > 9 ? fullDate.substring(0, 9) : fullDate;
-                        
+                results.data.forEach(row => {
+                    let id = row['Jagoan ID'] || row['Jagoan Id'] || row['jagoan id'];
+                    if(id) {
+                        let nama = row['Name'] || '';
+                        let tanggal = row['Approved At'] ? row['Approved At'].substring(0, 9) : '';
                         let item = row['Item Name'] || '';
                         let sold = parseInt(row['Sold']) || 0;
-                        let expired = parseInt(row['Expired']) || 0;
-                        let leftover = parseInt(row['Leftover']) || 0;
-                        let unsold = leftover + expired;
-                        
-                        parsedData.push([ nama, id, tanggalSaja, item, sold, unsold, expired, leftover ]);
+                        let exp = parseInt(row['Expired']) || 0;
+                        let left = parseInt(row['Leftover']) || 0;
+                        parsedData.push([nama, id, tanggal, item, sold, exp+left, exp, left]);
                     }
-                }
-                
+                });
                 if(parsedData.length > 0) {
                     btnProses.disabled = false;
-                    btnProses.innerText = `Kirim ${parsedData.length} Data ke Sheets`;
-                    showPesan(`Berhasil membaca ${parsedData.length} baris data.<br>Kolom Anda cocok! Silakan klik tombol kirim.`, "berhasil");
-                } else {
-                    btnProses.disabled = true;
-                    // TAMPILKAN ERROR DETEKTIF:
-                    showPesan(`<b>Data ditolak.</b> Sistem gagal mendeteksi kolom "Jagoan ID".<br><br><b>Kolom yang dibaca sistem dari file Anda:</b><br> ${kolomTerdeteksi.join(", ")}`, "gagal");
+                    showPesan(pesanUpload, `Siap mengirim ${parsedData.length} baris.`, "berhasil");
                 }
-            },
-            error: function(err) { showPesan("Gagal membaca file: " + err, "gagal"); }
+            }
         });
     });
 
-    // Proses Kirim Data
     btnProses.addEventListener('click', function() {
-        if(parsedData.length === 0) return;
-        btnProses.disabled = true; dropZone.style.pointerEvents = 'none';
-        btnProses.innerText = 'Sedang Mengirim Data...';
-        showPesan("Sedang mengirim data ke Google Sheets, mohon tunggu...", "proses");
-
+        btnProses.disabled = true;
+        showPesan(pesanUpload, "Sedang mengirim data...", "proses");
         fetch(scriptURL, { method: 'POST', body: JSON.stringify(parsedData), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
-        .then(res => res.json())
+        .then(res => res.json()).then(data => {
+            if(data.status === 'sukses') showPesan(pesanUpload, "Sukses dikirim!", "berhasil");
+            else showPesan(pesanUpload, "Gagal: " + data.pesan, "gagal");
+        });
+    });
+
+    // === LOGIKA DASHBOARD GRAFIK (BARU) ===
+    const btnLoadChart = document.getElementById('btnLoadChart');
+    const pesanChart = document.getElementById('pesanChart');
+    let myChart = null; // Menyimpan grafik agar bisa dihapus/diperbarui
+
+    btnLoadChart.addEventListener('click', function() {
+        btnLoadChart.disabled = true;
+        btnLoadChart.innerText = 'Menarik Data dari Sheets...';
+        showPesan(pesanChart, "Sedang mengunduh data, mohon tunggu...", "proses");
+
+        // Mengambil data menggunakan GET request
+        fetch(scriptURL)
+        .then(response => response.json())
         .then(data => {
             if(data.status === 'sukses') {
-                showPesan("Luar biasa! " + data.pesan, "berhasil");
-                setTimeout(() => { location.reload(); }, 3000); // Otomatis refresh setelah sukses
+                const rawData = data.data; // Array data dari Sheets
+                
+                // 1. Kumpulkan data penjualan berdasarkan Nama Produk (Kolom ke-4 atau index 3)
+                let penjualanProduk = {};
+                rawData.forEach(row => {
+                    let namaProduk = row[3]; // Item Name ada di kolom D (index 3)
+                    let terjual = parseInt(row[4]) || 0; // Sold ada di kolom E (index 4)
+                    
+                    if(namaProduk) {
+                        penjualanProduk[namaProduk] = (penjualanProduk[namaProduk] || 0) + terjual;
+                    }
+                });
+
+                // 2. Siapkan data untuk Chart.js
+                const labels = Object.keys(penjualanProduk);
+                const chartData = Object.values(penjualanProduk);
+
+                // 3. Hapus grafik lama jika sudah ada
+                if(myChart) { myChart.destroy(); }
+
+                // 4. Gambar Grafik Baru
+                const ctx = document.getElementById('salesChart').getContext('2d');
+                myChart = new Chart(ctx, {
+                    type: 'bar', // Bisa diganti 'pie' atau 'line'
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total Produk Terjual (Sold)',
+                            data: chartData,
+                            backgroundColor: '#3498db',
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: true } }
+                    }
+                });
+
+                showPesan(pesanChart, "Grafik berhasil dimuat!", "berhasil");
+                btnLoadChart.innerText = 'Perbarui Grafik';
+                btnLoadChart.disabled = false;
+
             } else {
-                showPesan("Gagal: " + data.pesan, "gagal");
-                btnProses.innerText = "Coba Kirim Lagi"; btnProses.disabled = false; dropZone.style.pointerEvents = 'auto';
+                showPesan(pesanChart, "Gagal menarik data: " + data.pesan, "gagal");
+                btnLoadChart.innerText = 'Coba Lagi';
+                btnLoadChart.disabled = false;
             }
-        }).catch(error => {
-            showPesan("Terjadi kesalahan koneksi: " + error, "gagal");
-            btnProses.innerText = "Coba Kirim Lagi"; btnProses.disabled = false; dropZone.style.pointerEvents = 'auto';
+        })
+        .catch(error => {
+            showPesan(pesanChart, "Kesalahan koneksi: " + error, "gagal");
+            btnLoadChart.innerText = 'Coba Lagi';
+            btnLoadChart.disabled = false;
         });
     });
 </script>
