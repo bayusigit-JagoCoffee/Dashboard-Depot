@@ -56,8 +56,6 @@
         /* Style Khusus Production Planner */
         .badge-bestseller { background-color: #e67e22; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
         .badge-normal { background-color: #95a5a6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
-        .warning-text { color: #e74c3c; font-weight: bold; font-size: 11px; }
-        .safe-text { color: #27ae60; font-weight: bold; font-size: 11px; }
 
         .tbl-supplies { table-layout: fixed; }
         .tbl-supplies th:first-child, .tbl-supplies td:first-child { width: 18%; }
@@ -206,18 +204,16 @@
 <div id="sectionPlanner" class="container" style="display:none;">
     <h2>📋 Daily Production Planner & Analisis Stok Depot</h2>
     
-    <!-- PILIH TANGGAL RENCANA PRODUKSI -->
     <div class="filter-box">
         <div class="filter-group">
             <label for="tglRencanaProduksi">Tanggal Produksi Besok:</label>
             <input type="date" id="tglRencanaProduksi" onchange="hitungRekomendasiProduksi()" />
         </div>
         <div class="filter-group">
-            <span style="font-size:12px; color:#555;">*Sistem otomatis mengambil data Penjualan H-1 dan H-7 (Minggu Lalu).</span>
+            <span style="font-size:12px; color:#555;">*Sistem otomatis mengambil data Penjualan H-1 dan H-7. Nilai Buffer % bisa di-adjust manual.</span>
         </div>
     </div>
 
-    <!-- TABEL INPUT SISA STOK DEPOT & HASIL ANALISIS REKOMENDASI -->
     <h3>Input Sisa Stok Depot & Rekomendasi Produksi</h3>
     <div class="table-wrapper">
         <table id="tblProductionPlanner">
@@ -230,10 +226,10 @@
                     <th style="width: 8%;">Shelf Life</th>
                     <th style="width: 8%;">Penjualan H-1</th>
                     <th style="width: 8%;">Penjualan H-7</th>
-                    <th style="width: 8%;">Buffer %</th>
-                    <th style="width: 10%;">Input Sisa Stok Depot (Cup)</th>
+                    <th style="width: 9%;">Buffer % (Adjust)</th>
+                    <th style="width: 11%;">Input Sisa Stok Depot (Cup)</th>
                     <th style="width: 10%;">Rekomendasi Produksi (Cup)</th>
-                    <th style="width: 10%;">Rekomendasi (Batch)</th>
+                    <th style="width: 8%;">Rekomendasi (Batch)</th>
                 </tr>
             </thead>
             <tbody>
@@ -242,7 +238,7 @@
         </table>
     </div>
 
-    <button class="btn-green" id="btnSimpanStok" onclick="simpanSisaStokDepot()" style="margin-top:15px; width:auto; padding:10px 25px;">💾 Simpan Sisa Stok Depot ke Sheets</button>
+    <button class="btn-green" id="btnSimpanStok" onclick="simpanSisaStokDepot()" style="margin-top:15px; width:auto; padding:12px 28px;">💾 Simpan Rencana Produksi & Stok Depot</button>
     <div id="pesanStok" class="pesan"></div>
 </div>
 
@@ -252,18 +248,18 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
     // =======================================================
 
-    // MASTER RULES PRODUK (Sesuai Hirarki Best Seller & Aturan)
+    // MASTER RULES PRODUK
     const masterProdukRules = [
-        { name: 'Kopi Susu JAGO', batchSize: 1000, minBatch: 1000, shelfLife: 5, bufferPct: 0.50, isBestSeller: true },
-        { name: 'Salted Caramel Latte', batchSize: 1000, minBatch: 500, shelfLife: 5, bufferPct: 0.40, isBestSeller: true },
-        { name: 'Matcha Latte', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.40, isBestSeller: true },
-        { name: 'JAGO Americano', batchSize: 100, minBatch: 100, shelfLife: 7, bufferPct: 0.15, isBestSeller: false },
-        { name: 'Citrus Cold Brew', batchSize: 100, minBatch: 100, shelfLife: 7, bufferPct: 0.15, isBestSeller: false },
-        { name: 'Kopi Susu Oatside', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
-        { name: 'Mont Blanc Shake', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
-        { name: 'JAGO Chocolate', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
-        { name: 'Vanilla Latte', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
-        { name: 'Pink Coco Lemonade', batchSize: 100, minBatch: 100, shelfLife: 7, bufferPct: 0.15, isBestSeller: false }
+        { name: 'Kopi Susu JAGO', batchSize: 1000, minBatch: 1000, shelfLife: 5, defaultBuffer: 50, isBestSeller: true },
+        { name: 'Salted Caramel Latte', batchSize: 1000, minBatch: 500, shelfLife: 5, defaultBuffer: 40, isBestSeller: true },
+        { name: 'Matcha Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 40, isBestSeller: true },
+        { name: 'JAGO Americano', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, isBestSeller: false },
+        { name: 'Citrus Cold Brew', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, isBestSeller: false },
+        { name: 'Kopi Susu Oatside', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, isBestSeller: false },
+        { name: 'Mont Blanc Shake', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, isBestSeller: false },
+        { name: 'JAGO Chocolate', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, isBestSeller: false },
+        { name: 'Vanilla Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, isBestSeller: false },
+        { name: 'Pink Coco Lemonade', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, isBestSeller: false }
     ];
 
     const targetSuppliesItems = [
@@ -339,7 +335,6 @@
             document.getElementById('sectionSupplies').style.display = 'none';
             document.getElementById('sectionPlanner').style.display = 'block';
             
-            // Set default tanggal besok
             let today = new Date();
             let tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -408,7 +403,6 @@
 
         let dTarget = new Date(tglTarget);
         
-        // H-1 (Kemarin) & H-7 (Minggu Lalu)
         let dH1 = new Date(dTarget); dH1.setDate(dH1.getDate() - 1);
         let dH7 = new Date(dTarget); dH7.setDate(dH7.getDate() - 7);
 
@@ -422,14 +416,8 @@
             let soldH1 = getPenjualanByDateProduct(strH1, p.name);
             let soldH7 = getPenjualanByDateProduct(strH7, p.name);
 
-            // Ambil estimasi baseline penjualan = Max antara H-1 dan H-7
-            let baselineEst = Math.max(soldH1, soldH7);
-            
-            // Kebutuhan kotor (+ Buffer)
-            let totalKebutuhan = Math.ceil(baselineEst * (1 + p.bufferPct));
-
-            let inputStokId = `stokInput_${index}`;
-            let existingVal = document.getElementById(inputStokId) ? document.getElementById(inputStokId).value : 0;
+            let bufferInputId = `bufferInput_${index}`;
+            let stokInputId = `stokInput_${index}`;
 
             let rowHtml = `
                 <tr>
@@ -438,34 +426,37 @@
                     <td>${p.isBestSeller ? '<span class="badge-bestseller">Best Seller</span>' : '<span class="badge-normal">Medium</span>'}</td>
                     <td>${p.batchSize} cup</td>
                     <td>${p.shelfLife} hari</td>
-                    <td><b>${soldH1}</b></td>
-                    <td><b>${soldH7}</b></td>
-                    <td>${(p.bufferPct * 100)}%</td>
+                    <td><b id="soldH1_${index}">${soldH1}</b></td>
+                    <td><b id="soldH7_${index}">${soldH7}</b></td>
                     <td>
-                        <input type="number" id="${inputStokId}" value="${existingVal}" min="0" style="width:70px; text-align:center;" oninput="kalkulasiBarisProduksi(${index}, ${totalKebutuhan})" />
+                        <input type="number" id="${bufferInputId}" value="${p.defaultBuffer}" min="0" max="200" style="width:55px; text-align:center;" oninput="kalkulasiBarisProduksi(${index})" /> %
                     </td>
-                    <td><b id="rekCup_${index}" style="font-size:14px; color:#27ae60;">0</b></td>
-                    <td><b id="rekBatch_${index}" style="font-size:13px; color:#2980b9;">0</b></td>
+                    <td>
+                        <input type="number" id="${stokInputId}" value="0" min="0" style="width:70px; text-align:center;" oninput="kalkulasiBarisProduksi(${index})" />
+                    </td>
+                    <td><b id="rekCup_${index}" style="font-size:14px; color:#27ae60;">0 cup</b></td>
+                    <td><b id="rekBatch_${index}" style="font-size:13px; color:#2980b9;">0 Batch</b></td>
                 </tr>
             `;
             tbody.innerHTML += rowHtml;
         });
 
-        // Jalankan kalkulasi awal setelah render
         masterProdukRules.forEach((p, index) => {
-            let soldH1 = getPenjualanByDateProduct(strH1, p.name);
-            let soldH7 = getPenjualanByDateProduct(strH7, p.name);
-            let baselineEst = Math.max(soldH1, soldH7);
-            let totalKebutuhan = Math.ceil(baselineEst * (1 + p.bufferPct));
-            kalkulasiBarisProduksi(index, totalKebutuhan);
+            kalkulasiBarisProduksi(index);
         });
     }
 
-    function kalkulasiBarisProduksi(index, totalKebutuhan) {
+    function kalkulasiBarisProduksi(index) {
         let p = masterProdukRules[index];
+        let soldH1 = parseInt(document.getElementById(`soldH1_${index}`).innerText) || 0;
+        let soldH7 = parseInt(document.getElementById(`soldH7_${index}`).innerText) || 0;
+        
+        let bufferVal = parseFloat(document.getElementById(`bufferInput_${index}`).value) || 0;
         let sisaStok = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
 
-        // Kebutuhan Bersih setelah dikurangi Sisa Stok
+        let baselineEst = Math.max(soldH1, soldH7);
+        let totalKebutuhan = Math.ceil(baselineEst * (1 + (bufferVal / 100)));
+
         let netNeeded = totalKebutuhan - sisaStok;
 
         let finalProduceCup = 0;
@@ -473,12 +464,10 @@
 
         if (netNeeded > 0) {
             if (p.name === 'Salted Caramel Latte') {
-                // Kelipatan 500 cup (0.5 batch)
                 let numMinBatches = Math.ceil(netNeeded / 500);
                 finalProduceCup = numMinBatches * 500;
                 batchText = (finalProduceCup / 1000) + " Batch";
             } else {
-                // Kelipatan 1 Batch Penuh (100 cup / 1000 cup)
                 let numBatches = Math.ceil(netNeeded / p.batchSize);
                 finalProduceCup = numBatches * p.batchSize;
                 batchText = numBatches + " Batch";
@@ -495,15 +484,29 @@
 
         let stokData = [];
         masterProdukRules.forEach((p, index) => {
-            let val = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
-            stokData.push({ produk: p.name, stok: val });
+            let soldH1 = parseInt(document.getElementById(`soldH1_${index}`).innerText) || 0;
+            let soldH7 = parseInt(document.getElementById(`soldH7_${index}`).innerText) || 0;
+            let bufferVal = parseFloat(document.getElementById(`bufferInput_${index}`).value) || 0;
+            let sisaStok = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
+            let rekCup = document.getElementById(`rekCup_${index}`).innerText;
+            let rekBatch = document.getElementById(`rekBatch_${index}`).innerText;
+
+            stokData.push({ 
+                produk: p.name, 
+                soldH1: soldH1,
+                soldH7: soldH7,
+                bufferPct: bufferVal,
+                stok: sisaStok,
+                rekCup: rekCup,
+                rekBatch: rekBatch
+            });
         });
 
         let btn = document.getElementById('btnSimpanStok');
         let pesan = document.getElementById('pesanStok');
         btn.disabled = true;
         pesan.className = 'pesan proses';
-        pesan.innerText = 'Menyimpan Sisa Stok Depot...';
+        pesan.innerText = 'Menyimpan Rencana Produksi & Stok Depot...';
         pesan.style.display = 'block';
 
         fetch(scriptURL, {
@@ -516,7 +519,7 @@
         .then(resData => {
             if (resData.status === 'sukses') {
                 pesan.className = 'pesan berhasil';
-                pesan.innerText = 'Selesai! Sisa stok depot berhasil disimpan ke Google Sheets.';
+                pesan.innerText = 'Selesai! Rencana produksi & stok depot berhasil disimpan dengan rapi ke Google Sheets.';
             } else {
                 throw new Error(resData.pesan || 'Gagal menyimpan');
             }
