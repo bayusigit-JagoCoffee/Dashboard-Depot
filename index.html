@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Operational & Checkout Supplies Jago</title>
+    <title>Dashboard Operational, Supplies & Perencanaan Produksi Jago</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -12,8 +12,8 @@
         h2, h3 { color: #2c3e50; margin-top: 0; }
         
         /* Menu Switcher Utama */
-        .mode-switcher { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 3px solid #2c3e50; padding-bottom: 10px; }
-        .btn-mode { padding: 12px 24px; font-size: 15px; font-weight: bold; border: none; background-color: #e2e8f0; color: #475569; border-radius: 8px 8px 0 0; cursor: pointer; transition: 0.2s; }
+        .mode-switcher { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 3px solid #2c3e50; padding-bottom: 10px; overflow-x: auto; }
+        .btn-mode { padding: 12px 20px; font-size: 14px; font-weight: bold; border: none; background-color: #e2e8f0; color: #475569; border-radius: 8px 8px 0 0; cursor: pointer; transition: 0.2s; white-space: nowrap; }
         .btn-mode.active { background-color: #2c3e50; color: white; }
 
         /* Area Upload */
@@ -23,10 +23,10 @@
         .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
         
-        /* Filter Box dengan Input Tanggal & Pencarian */
+        /* Filter Box */
         .filter-box { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .filter-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
-        .filter-group input[type="date"], .filter-group input[type="text"], .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; }
+        .filter-group input[type="date"], .filter-group input[type="text"], .filter-group input[type="number"], .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; }
         .btn-filter { padding: 9px 18px; background-color: #2c3e50; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-reset { padding: 9px 18px; background-color: #7f8c8d; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
@@ -53,7 +53,12 @@
         .badge-rank { display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: #3498db; color: white; font-weight: bold; font-size: 10px; }
         tr.row-total { background-color: #eaeded; font-weight: bold; }
 
-        /* Khusus Lebar Kolom Tabel Supplies */
+        /* Style Khusus Production Planner */
+        .badge-bestseller { background-color: #e67e22; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .badge-normal { background-color: #95a5a6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .warning-text { color: #e74c3c; font-weight: bold; font-size: 11px; }
+        .safe-text { color: #27ae60; font-weight: bold; font-size: 11px; }
+
         .tbl-supplies { table-layout: fixed; }
         .tbl-supplies th:first-child, .tbl-supplies td:first-child { width: 18%; }
 
@@ -68,22 +73,25 @@
     <div class="mode-switcher">
         <button class="btn-mode active" onclick="gantiMode('sales')">📊 Dashboard Penjualan & Waste</button>
         <button class="btn-mode" onclick="gantiMode('supplies')">📦 Dashboard Checkout Supplies</button>
+        <button class="btn-mode" onclick="gantiMode('planner')">📋 Perencanaan Produksi Harian</button>
     </div>
 
     <!-- KOTAK UPLOAD CSV -->
-    <h2>Upload Data CSV</h2>
-    <div class="radio-upload">
-        <label><input type="radio" name="uploadType" value="sales" checked> Data Penjualan Jagoan</label>
-        <label><input type="radio" name="uploadType" value="supplies"> Data Checkout Supplies</label>
-    </div>
+    <div id="sectionUpload">
+        <h2>Upload Data CSV</h2>
+        <div class="radio-upload">
+            <label><input type="radio" name="uploadType" value="sales" checked> Data Penjualan Jagoan</label>
+            <label><input type="radio" name="uploadType" value="supplies"> Data Checkout Supplies</label>
+        </div>
 
-    <div class="upload-area" onclick="document.getElementById('csvFile').click()">
-        <span class="btn-blue">Pilih File CSV</span>
-        <input type="file" id="csvFile" accept=".csv" />
-        <span id="fileName" style="display:block; margin-top:10px; font-weight:bold;">Atau tarik file CSV ke sini</span>
+        <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+            <span class="btn-blue">Pilih File CSV</span>
+            <input type="file" id="csvFile" accept=".csv" />
+            <span id="fileName" style="display:block; margin-top:10px; font-weight:bold;">Atau tarik file CSV ke sini</span>
+        </div>
+        <button id="btnProses" class="btn-green" disabled>Kirim ke Sheets & Perbarui Analisis</button>
+        <div id="pesanUpload" class="pesan"></div>
     </div>
-    <button id="btnProses" class="btn-green" disabled>Kirim ke Sheets & Perbarui Analisis</button>
-    <div id="pesanUpload" class="pesan"></div>
 </div>
 
 <!-- DASHBOARD MODE 1: PENJUALAN & WASTE -->
@@ -194,11 +202,69 @@
     </div>
 </div>
 
+<!-- DASHBOARD MODE 3: PRODUCTION PLANNER & STOK DEPOT -->
+<div id="sectionPlanner" class="container" style="display:none;">
+    <h2>📋 Daily Production Planner & Analisis Stok Depot</h2>
+    
+    <!-- PILIH TANGGAL RENCANA PRODUKSI -->
+    <div class="filter-box">
+        <div class="filter-group">
+            <label for="tglRencanaProduksi">Tanggal Produksi Besok:</label>
+            <input type="date" id="tglRencanaProduksi" onchange="hitungRekomendasiProduksi()" />
+        </div>
+        <div class="filter-group">
+            <span style="font-size:12px; color:#555;">*Sistem otomatis mengambil data Penjualan H-1 dan H-7 (Minggu Lalu).</span>
+        </div>
+    </div>
+
+    <!-- TABEL INPUT SISA STOK DEPOT & HASIL ANALISIS REKOMENDASI -->
+    <h3>Input Sisa Stok Depot & Rekomendasi Produksi</h3>
+    <div class="table-wrapper">
+        <table id="tblProductionPlanner">
+            <thead>
+                <tr>
+                    <th style="width: 4%;">Rank</th>
+                    <th class="text-left" style="width: 18%;">Nama Produk</th>
+                    <th style="width: 8%;">Status</th>
+                    <th style="width: 8%;">Batch Size</th>
+                    <th style="width: 8%;">Shelf Life</th>
+                    <th style="width: 8%;">Penjualan H-1</th>
+                    <th style="width: 8%;">Penjualan H-7</th>
+                    <th style="width: 8%;">Buffer %</th>
+                    <th style="width: 10%;">Input Sisa Stok Depot (Cup)</th>
+                    <th style="width: 10%;">Rekomendasi Produksi (Cup)</th>
+                    <th style="width: 10%;">Rekomendasi (Batch)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Generated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <button class="btn-green" id="btnSimpanStok" onclick="simpanSisaStokDepot()" style="margin-top:15px; width:auto; padding:10px 25px;">💾 Simpan Sisa Stok Depot ke Sheets</button>
+    <div id="pesanStok" class="pesan"></div>
+</div>
+
 <script>
     // =======================================================
     // PASTE URL APPS SCRIPT ANDA DI BAWAH INI:
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
     // =======================================================
+
+    // MASTER RULES PRODUK (Sesuai Hirarki Best Seller & Aturan)
+    const masterProdukRules = [
+        { name: 'Kopi Susu JAGO', batchSize: 1000, minBatch: 1000, shelfLife: 5, bufferPct: 0.50, isBestSeller: true },
+        { name: 'Salted Caramel Latte', batchSize: 1000, minBatch: 500, shelfLife: 5, bufferPct: 0.40, isBestSeller: true },
+        { name: 'Matcha Latte', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.40, isBestSeller: true },
+        { name: 'JAGO Americano', batchSize: 100, minBatch: 100, shelfLife: 7, bufferPct: 0.15, isBestSeller: false },
+        { name: 'Citrus Cold Brew', batchSize: 100, minBatch: 100, shelfLife: 7, bufferPct: 0.15, isBestSeller: false },
+        { name: 'Kopi Susu Oatside', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
+        { name: 'Mont Blanc Shake', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
+        { name: 'JAGO Chocolate', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
+        { name: 'Vanilla Latte', batchSize: 100, minBatch: 100, shelfLife: 5, bufferPct: 0.15, isBestSeller: false },
+        { name: 'Pink Coco Lemonade', batchSize: 100, minBatch: 100, shelfLife: 7, bufferPct: 0.15, isBestSeller: false }
+    ];
 
     const targetSuppliesItems = [
         'Plastik Sampah (Pcs)',
@@ -217,6 +283,7 @@
 
     let rawSalesData = [];
     let rawSuppliesData = [];
+    let rawStokDepotData = [];
     let filteredSuppliesData = [];
     
     let chartTotal = null;
@@ -253,14 +320,32 @@
 
     function gantiMode(mode) {
         document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('sectionUpload').style.display = 'block';
+
         if (mode === 'sales') {
             document.querySelectorAll('.btn-mode')[0].classList.add('active');
             document.getElementById('sectionSales').style.display = 'block';
             document.getElementById('sectionSupplies').style.display = 'none';
-        } else {
+            document.getElementById('sectionPlanner').style.display = 'none';
+        } else if (mode === 'supplies') {
             document.querySelectorAll('.btn-mode')[1].classList.add('active');
             document.getElementById('sectionSales').style.display = 'none';
             document.getElementById('sectionSupplies').style.display = 'block';
+            document.getElementById('sectionPlanner').style.display = 'none';
+        } else if (mode === 'planner') {
+            document.querySelectorAll('.btn-mode')[2].classList.add('active');
+            document.getElementById('sectionUpload').style.display = 'none';
+            document.getElementById('sectionSales').style.display = 'none';
+            document.getElementById('sectionSupplies').style.display = 'none';
+            document.getElementById('sectionPlanner').style.display = 'block';
+            
+            // Set default tanggal besok
+            let today = new Date();
+            let tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('tglRencanaProduksi').value = tomorrow.toISOString().split('T')[0];
+            
+            hitungRekomendasiProduksi();
         }
     }
 
@@ -291,6 +376,7 @@
             if(data.status === 'sukses') {
                 rawSalesData = data.dataSales || [];
                 rawSuppliesData = data.dataSupplies || [];
+                rawStokDepotData = data.dataStok || [];
 
                 prosesDanTampilkanSales(rawSalesData);
 
@@ -300,7 +386,152 @@
         });
     }
 
-    // --- LOGIKA SUPPLIES (KALENDER & MAKS 31 HARI) ---
+    // --- LOGIKA PRODUCTION PLANNER & REKOMENDASI PRODUKSI ---
+    function getPenjualanByDateProduct(targetDate, prodName) {
+        let sum = 0;
+        let normTarget = normalizeToISO(targetDate);
+        rawSalesData.forEach(row => {
+            let tgl = normalizeToISO(row[2]);
+            let pName = row[3];
+            let sold = parseInt(row[4]) || 0;
+
+            if(tgl === normTarget && pName && pName.toLowerCase().trim() === prodName.toLowerCase().trim()) {
+                sum += sold;
+            }
+        });
+        return sum;
+    }
+
+    function hitungRekomendasiProduksi() {
+        let tglTarget = document.getElementById('tglRencanaProduksi').value;
+        if (!tglTarget) return;
+
+        let dTarget = new Date(tglTarget);
+        
+        // H-1 (Kemarin) & H-7 (Minggu Lalu)
+        let dH1 = new Date(dTarget); dH1.setDate(dH1.getDate() - 1);
+        let dH7 = new Date(dTarget); dH7.setDate(dH7.getDate() - 7);
+
+        let strH1 = dH1.toISOString().split('T')[0];
+        let strH7 = dH7.toISOString().split('T')[0];
+
+        let tbody = document.querySelector("#tblProductionPlanner tbody");
+        tbody.innerHTML = "";
+
+        masterProdukRules.forEach((p, index) => {
+            let soldH1 = getPenjualanByDateProduct(strH1, p.name);
+            let soldH7 = getPenjualanByDateProduct(strH7, p.name);
+
+            // Ambil estimasi baseline penjualan = Max antara H-1 dan H-7
+            let baselineEst = Math.max(soldH1, soldH7);
+            
+            // Kebutuhan kotor (+ Buffer)
+            let totalKebutuhan = Math.ceil(baselineEst * (1 + p.bufferPct));
+
+            let inputStokId = `stokInput_${index}`;
+            let existingVal = document.getElementById(inputStokId) ? document.getElementById(inputStokId).value : 0;
+
+            let rowHtml = `
+                <tr>
+                    <td><span class="badge-rank">${index + 1}</span></td>
+                    <td class="text-left">${p.name}</td>
+                    <td>${p.isBestSeller ? '<span class="badge-bestseller">Best Seller</span>' : '<span class="badge-normal">Medium</span>'}</td>
+                    <td>${p.batchSize} cup</td>
+                    <td>${p.shelfLife} hari</td>
+                    <td><b>${soldH1}</b></td>
+                    <td><b>${soldH7}</b></td>
+                    <td>${(p.bufferPct * 100)}%</td>
+                    <td>
+                        <input type="number" id="${inputStokId}" value="${existingVal}" min="0" style="width:70px; text-align:center;" oninput="kalkulasiBarisProduksi(${index}, ${totalKebutuhan})" />
+                    </td>
+                    <td><b id="rekCup_${index}" style="font-size:14px; color:#27ae60;">0</b></td>
+                    <td><b id="rekBatch_${index}" style="font-size:13px; color:#2980b9;">0</b></td>
+                </tr>
+            `;
+            tbody.innerHTML += rowHtml;
+        });
+
+        // Jalankan kalkulasi awal setelah render
+        masterProdukRules.forEach((p, index) => {
+            let soldH1 = getPenjualanByDateProduct(strH1, p.name);
+            let soldH7 = getPenjualanByDateProduct(strH7, p.name);
+            let baselineEst = Math.max(soldH1, soldH7);
+            let totalKebutuhan = Math.ceil(baselineEst * (1 + p.bufferPct));
+            kalkulasiBarisProduksi(index, totalKebutuhan);
+        });
+    }
+
+    function kalkulasiBarisProduksi(index, totalKebutuhan) {
+        let p = masterProdukRules[index];
+        let sisaStok = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
+
+        // Kebutuhan Bersih setelah dikurangi Sisa Stok
+        let netNeeded = totalKebutuhan - sisaStok;
+
+        let finalProduceCup = 0;
+        let batchText = "0 Batch";
+
+        if (netNeeded > 0) {
+            if (p.name === 'Salted Caramel Latte') {
+                // Kelipatan 500 cup (0.5 batch)
+                let numMinBatches = Math.ceil(netNeeded / 500);
+                finalProduceCup = numMinBatches * 500;
+                batchText = (finalProduceCup / 1000) + " Batch";
+            } else {
+                // Kelipatan 1 Batch Penuh (100 cup / 1000 cup)
+                let numBatches = Math.ceil(netNeeded / p.batchSize);
+                finalProduceCup = numBatches * p.batchSize;
+                batchText = numBatches + " Batch";
+            }
+        }
+
+        document.getElementById(`rekCup_${index}`).innerText = finalProduceCup + " cup";
+        document.getElementById(`rekBatch_${index}`).innerText = batchText;
+    }
+
+    function simpanSisaStokDepot() {
+        let tgl = document.getElementById('tglRencanaProduksi').value;
+        if (!tgl) { alert("Pilih tanggal terlebih dahulu!"); return; }
+
+        let stokData = [];
+        masterProdukRules.forEach((p, index) => {
+            let val = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
+            stokData.push({ produk: p.name, stok: val });
+        });
+
+        let btn = document.getElementById('btnSimpanStok');
+        let pesan = document.getElementById('pesanStok');
+        btn.disabled = true;
+        pesan.className = 'pesan proses';
+        pesan.innerText = 'Menyimpan Sisa Stok Depot...';
+        pesan.style.display = 'block';
+
+        fetch(scriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'save_stok_depot', tanggal: tgl, stokData: stokData }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            redirect: 'follow'
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.status === 'sukses') {
+                pesan.className = 'pesan berhasil';
+                pesan.innerText = 'Selesai! Sisa stok depot berhasil disimpan ke Google Sheets.';
+            } else {
+                throw new Error(resData.pesan || 'Gagal menyimpan');
+            }
+        })
+        .catch(err => {
+            pesan.className = 'pesan gagal';
+            pesan.innerText = 'Gagal menyimpan: ' + err.message;
+        })
+        .finally(() => {
+            btn.disabled = false;
+            setTimeout(() => { pesan.style.display = 'none'; }, 3000);
+        });
+    }
+
+    // --- LOGIKA SUPPLIES ---
     function terapkanFilterSupplies() {
         let awal = document.getElementById('tglAwalSupplies').value;
         let akhir = document.getElementById('tglAkhirSupplies').value;
@@ -386,7 +617,6 @@
 
         let arrTgl = Array.from(setTanggal).sort();
 
-        // 1. Render Tabel Pivot Harian Supplies
         let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Tanggal</th>';
         targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
         html += '</tr></thead><tbody>';
@@ -407,7 +637,6 @@
         html += '</tbody></table>';
         document.getElementById('containerTblSuppliesHarian').innerHTML = html;
 
-        // 2. Populate Datalist Autocomplete Nama Jagoan
         let datalist = document.getElementById('listJagoanOptions');
         datalist.innerHTML = '';
         Array.from(setJagoan).sort().forEach(j => {
@@ -422,7 +651,6 @@
         renderRekapJagoanSupplies();
     }
 
-    // --- RENDER REKAP JAGOAN DINAMIS ---
     function renderRekapJagoanSupplies() {
         let queryNama = document.getElementById('searchJagoanSupplies').value.trim();
         let queryNamaLower = queryNama.toLowerCase();
@@ -630,7 +858,6 @@
         renderTabelRank('tblRankWasteJagoan', rankWasteJagoan, 'Waste');
         renderTabelRank('tblRankWasteProduk', rankWasteProduk, 'Waste');
 
-        // Render Pivot Terbalik: Tanggal di Sumbu Y (Baris), Produk di Sumbu X (Kolom)
         renderTabelPivotDibalik('containerTblSalesHarian', matrixSales, arrProduk, arrTgl);
         renderTabelPivotDibalik('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
 
@@ -646,7 +873,6 @@
         document.querySelector(`#${elementId} tbody`).innerHTML = html;
     }
 
-    // --- FUNGSI TERTAMPIL DIBALIK: BARIS = TANGGAL (Y), KOLOM = PRODUK (X) ---
     function renderTabelPivotDibalik(containerId, matrixData, arrProduk, arrTgl) {
         let html = '<table><thead><tr><th class="text-left" style="min-width:100px;">Tanggal</th>';
         arrProduk.forEach(p => { html += `<th>${p}</th>`; });
@@ -659,12 +885,10 @@
             arrProduk.forEach(p => { totalPerProduk[p] = 0; });
             let grandTotal = 0;
 
-            // Loop Baris berdasarkan Tanggal
             arrTgl.forEach(tgl => {
                 let totalRow = 0;
                 html += `<tr><td class="text-left">${tgl}</td>`;
                 
-                // Loop Kolom berdasarkan Produk
                 arrProduk.forEach(p => {
                     let val = matrixData[tgl] && matrixData[tgl][p] ? matrixData[tgl][p] : 0;
                     totalRow += val;
@@ -676,7 +900,6 @@
                 html += `<td><b>${totalRow}</b></td></tr>`;
             });
 
-            // Baris Paling Bawah: Total Keseluruhan Per Produk
             html += '<tr class="row-total"><td class="text-left">Total</td>';
             arrProduk.forEach(p => {
                 html += `<td>${totalPerProduk[p]}</td>`;
