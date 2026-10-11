@@ -178,7 +178,7 @@
         <div class="table-wrapper" id="containerTblSuppliesHarian"></div>
     </div>
 
-    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN (DINAMIS SENSITIF FILTER) -->
+    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN -->
     <div id="tabSuppliesJagoan" class="tab-content-supplies" style="display:none; padding-top:20px;">
         <div class="filter-box" style="background-color: #f8fafc;">
             <div class="filter-group">
@@ -221,13 +221,15 @@
     let chartTotal = null;
     let chartProduk = null;
 
-    // --- PARSER TANGGAL MURNI STRING (ANTI SHIFT ZONA WAKTU) ---
+    // --- PARSER TANGGAL UNIVERSAL SANGAT KETAT & AMAN ---
     function normalizeToISO(raw) {
         if(!raw) return '';
-        let str = raw.toString().trim().replace(/^'/, '');
+        let str = raw.toString().trim().replace(/^'/, ''); // bersihkan tanda petik
         if(str.includes('T')) str = str.split('T')[0];
         
         let spaceParts = str.split(' ');
+        
+        // Handling Format Teks: "01 Oct 2026" / "01 Oct 26"
         if(spaceParts.length >= 3 && isNaN(spaceParts[1])) {
             let day = spaceParts[0].padStart(2, '0');
             let monStr = spaceParts[1].substring(0, 3).toLowerCase();
@@ -237,13 +239,17 @@
         }
 
         let dateOnly = spaceParts[0];
-        let parts = dateOnly.split(/[-/]/);
+        let parts = dateOnly.split(/[-/.]/);
 
-        if(parts[0].length === 4) {
-            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-        }
-        if(parts.length === 3 && parts[2].length === 4) {
-            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        if(parts.length === 3) {
+            // Format YYYY-MM-DD
+            if(parts[0].length === 4) {
+                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+            // Format DD/MM/YYYY atau DD-MM-YYYY
+            if(parts[2].length === 4) {
+                return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
         }
         return dateOnly;
     }
@@ -301,6 +307,12 @@
     function terapkanFilterSupplies() {
         let awal = document.getElementById('tglAwalSupplies').value;
         let akhir = document.getElementById('tglAkhirSupplies').value;
+
+        if(!awal && !akhir) {
+            filteredSuppliesData = rawSuppliesData;
+            prosesDanTampilkanSupplies(rawSuppliesData);
+            return;
+        }
 
         if(!awal || !akhir) {
             alert("Silakan pilih Tanggal Awal dan Tanggal Akhir terlebih dahulu.");
@@ -382,14 +394,18 @@
         targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
         html += '</tr></thead><tbody>';
 
-        arrTgl.forEach(tgl => {
-            html += `<tr><td class="text-left">${tgl}</td>`;
-            targetSuppliesItems.forEach(it => {
-                let val = matrixSupplies[tgl] && matrixSupplies[tgl][it] ? matrixSupplies[tgl][it] : 0;
-                html += `<td>${val}</td>`;
+        if(arrTgl.length === 0) {
+            html += `<tr><td colspan="${targetSuppliesItems.length + 1}" style="color:#7f8c8d; padding:15px;">Tidak ada data checkout supplies pada rentang tanggal ini</td></tr>`;
+        } else {
+            arrTgl.forEach(tgl => {
+                html += `<tr><td class="text-left">${tgl}</td>`;
+                targetSuppliesItems.forEach(it => {
+                    let val = matrixSupplies[tgl] && matrixSupplies[tgl][it] ? matrixSupplies[tgl][it] : 0;
+                    html += `<td>${val}</td>`;
+                });
+                html += '</tr>';
             });
-            html += '</tr>';
-        });
+        }
 
         html += '</tbody></table>';
         document.getElementById('containerTblSuppliesHarian').innerHTML = html;
@@ -409,13 +425,13 @@
         renderRekapJagoanSupplies();
     }
 
-    // --- RENDER REKAP JAGOAN DINAMIS (SAAT DIFILTER -> TAMPILKAN RINCIAN TANGGAL) ---
+    // --- RENDER REKAP JAGOAN DINAMIS ---
     function renderRekapJagoanSupplies() {
         let queryNama = document.getElementById('searchJagoanSupplies').value.trim();
         let queryNamaLower = queryNama.toLowerCase();
         let titleEl = document.getElementById('titleTblRekapJagoan');
 
-        // KASUS A: BILA NAMA JAGOAN DIKETIK / DIFILTER (TAMPILAN RINCIAN PER TANGGAL)
+        // KASUS A: BILA NAMA JAGOAN DIKETIK / DIFILTER (TAMPILKAN PER TANGGAL)
         if (queryNama !== '') {
             titleEl.innerText = `Detail Checkout Supplies per Tanggal - ${queryNama}`;
             
@@ -465,7 +481,6 @@
                     html += `<td><b>${totalRow}</b></td></tr>`;
                 });
 
-                // Baris Total Keseluruhan
                 html += '<tr class="row-total"><td class="text-left">Total</td>';
                 targetSuppliesItems.forEach(it => {
                     html += `<td>${totalPerItem[it]}</td>`;
@@ -477,7 +492,7 @@
             document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
 
         } 
-        // KASUS B: BILA FILTER NAMA KOSONG (TAMPILAN REKAPITULASI SEMUA JAGOAN)
+        // KASUS B: BILA FILTER NAMA KOSONG (REKAPITULASI SEMUA JAGOAN)
         else {
             titleEl.innerText = 'Tabel Rekapitulasi Supplies Per Jagoan';
             
@@ -541,6 +556,11 @@
     function terapkanFilterSales() {
         let awal = document.getElementById('tglAwalSales').value;
         let akhir = document.getElementById('tglAkhirSales').value;
+
+        if(!awal && !akhir) {
+            prosesDanTampilkanSales(rawSalesData);
+            return;
+        }
 
         if(!awal || !akhir) {
             alert("Silakan pilih Tanggal Awal dan Tanggal Akhir terlebih dahulu.");
