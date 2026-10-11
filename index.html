@@ -23,10 +23,10 @@
         .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
         
-        /* Filter Box dengan Input Tanggal Kalender */
+        /* Filter Box dengan Input Tanggal & Pencarian */
         .filter-box { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .filter-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
-        .filter-group input[type="date"], .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; }
+        .filter-group input[type="date"], .filter-group input[type="text"], .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; }
         .btn-filter { padding: 9px 18px; background-color: #2c3e50; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-reset { padding: 9px 18px; background-color: #7f8c8d; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
@@ -175,15 +175,17 @@
         <div class="table-wrapper" id="containerTblSuppliesHarian"></div>
     </div>
 
-    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN -->
+    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN (FORMAT PIVOT + SEARCHABLE INPUT) -->
     <div id="tabSuppliesJagoan" class="tab-content-supplies" style="display:none; padding-top:20px;">
         <div class="filter-box" style="background-color: #f8fafc;">
             <div class="filter-group">
-                <label for="selectJagoanSupplies">Pilih Nama Jagoan:</label>
-                <select id="selectJagoanSupplies" onchange="renderRekapJagoanSupplies()"><option value="">-- Semua Jagoan --</option></select>
+                <label for="searchJagoanSupplies">Cari / Pilih Nama Jagoan:</label>
+                <input type="text" id="searchJagoanSupplies" list="listJagoanOptions" placeholder="Ketik nama jagoan..." oninput="renderRekapJagoanSupplies()" style="width: 250px;" />
+                <datalist id="listJagoanOptions"></datalist>
+                <button class="btn-reset" onclick="resetSearchJagoan()" style="padding:7px 12px; font-size:12px;">Bersihkan</button>
             </div>
         </div>
-        <h3>Detail Checkout Item per Jagoan</h3>
+        <h3>Tabel Rekapitulasi Supplies Per Jagoan</h3>
         <div class="table-wrapper" id="containerTblSuppliesJagoan"></div>
     </div>
 </div>
@@ -219,14 +221,10 @@
     // --- PARSER TANGGAL MURNI STRING (ANTI SHIFT ZONA WAKTU) ---
     function normalizeToISO(raw) {
         if(!raw) return '';
-        let str = raw.toString().trim().replace(/^'/, ''); // Hapus tanda petik awal jika ada
-        
-        // Hapus jam & timezone jika ada
+        let str = raw.toString().trim().replace(/^'/, '');
         if(str.includes('T')) str = str.split('T')[0];
         
         let spaceParts = str.split(' ');
-        
-        // Kasus "01 Oct 26" / "01 Oct 2026"
         if(spaceParts.length >= 3 && isNaN(spaceParts[1])) {
             let day = spaceParts[0].padStart(2, '0');
             let monStr = spaceParts[1].substring(0, 3).toLowerCase();
@@ -238,11 +236,9 @@
         let dateOnly = spaceParts[0];
         let parts = dateOnly.split(/[-/]/);
 
-        // Kasus "2026-10-01"
         if(parts[0].length === 4) {
             return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
         }
-        // Kasus "01/10/2026" / "1/10/2026"
         if(parts.length === 3 && parts[2].length === 4) {
             return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
@@ -298,7 +294,7 @@
         });
     }
 
-    // --- LOGIKA SUPPLIES (KALENDER & VALIDASI MAKS 31 HARI) ---
+    // --- LOGIKA SUPPLIES (KALENDER & MAKS 31 HARI) ---
     function terapkanFilterSupplies() {
         let awal = document.getElementById('tglAwalSupplies').value;
         let akhir = document.getElementById('tglAkhirSupplies').value;
@@ -378,6 +374,7 @@
 
         let arrTgl = Array.from(setTanggal).sort();
 
+        // 1. Render Tabel Pivot Harian Supplies
         let html = '<table><thead><tr><th class="text-left">Tanggal</th>';
         targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
         html += '</tr></thead><tbody>';
@@ -394,54 +391,84 @@
         html += '</tbody></table>';
         document.getElementById('containerTblSuppliesHarian').innerHTML = html;
 
-        let selJagoan = document.getElementById('selectJagoanSupplies');
-        let currentSelected = selJagoan.value;
-        selJagoan.innerHTML = '<option value="">-- Semua Jagoan --</option>';
+        // 2. Populate Datalist Autocomplete Nama Jagoan
+        let datalist = document.getElementById('listJagoanOptions');
+        datalist.innerHTML = '';
         Array.from(setJagoan).sort().forEach(j => {
-            selJagoan.innerHTML += `<option value="${j}">${j}</option>`;
+            datalist.innerHTML += `<option value="${j}">`;
         });
-        selJagoan.value = currentSelected;
 
         renderRekapJagoanSupplies();
     }
 
+    function resetSearchJagoan() {
+        document.getElementById('searchJagoanSupplies').value = '';
+        renderRekapJagoanSupplies();
+    }
+
+    // --- RENDER REKAP JAGOAN DENGAN TAMPILAN MATRIX PIVOT (MIRIP TABEL HARIAN) ---
     function renderRekapJagoanSupplies() {
-        let jagoanSelected = document.getElementById('selectJagoanSupplies').value;
-        let rekap = {};
+        let queryNama = document.getElementById('searchJagoanSupplies').value.trim().toLowerCase();
+        let matrixJagoan = {};
+        let setJagoanFound = new Set();
 
         filteredSuppliesData.forEach(row => {
             let nama = row[0];
             let item = row[1];
             let qty = parseInt(row[3]) || 0;
 
-            if(!item || !isTargetItem(item)) return;
-            if(jagoanSelected && nama !== jagoanSelected) return;
+            if(!nama || !item || !isTargetItem(item)) return;
+
+            // Saring pencarian berdasarkan nama jagoan yang diketik
+            if(queryNama && !nama.toLowerCase().includes(queryNama)) return;
 
             let normItem = getNormalizedItemName(item);
 
-            if(!rekap[nama]) rekap[nama] = {};
-            rekap[nama][normItem] = (rekap[nama][normItem] || 0) + qty;
+            setJagoanFound.add(nama);
+
+            if(!matrixJagoan[nama]) matrixJagoan[nama] = {};
+            matrixJagoan[nama][normItem] = (matrixJagoan[nama][normItem] || 0) + qty;
         });
 
-        let html = '<table><thead><tr><th class="text-left">Nama Jagoan</th><th class="text-left">Nama Item</th><th>Total Quantity Checkout</th></tr></thead><tbody>';
-        
-        let hasData = false;
-        for(let jagoan in rekap) {
-            for(let item in rekap[jagoan]) {
-                hasData = true;
-                html += `<tr><td class="text-left">${jagoan}</td><td class="text-left">${item}</td><td><b>${rekap[jagoan][item]}</b></td></tr>`;
-            }
-        }
+        let arrJagoan = Array.from(setJagoanFound).sort();
 
-        if(!hasData) {
-            html += '<tr><td colspan="3" style="color:#7f8c8d;">Tidak ada data checkout supplies untuk periode/jagoan ini</td></tr>';
+        let html = '<table><thead><tr><th class="text-left">Nama Jagoan</th>';
+        targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
+        html += '<th>Total</th></tr></thead><tbody>';
+
+        if(arrJagoan.length === 0) {
+            html += `<tr><td colspan="${targetSuppliesItems.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data checkout supplies untuk nama Jagoan ini</td></tr>`;
+        } else {
+            let totalPerItem = {};
+            targetSuppliesItems.forEach(it => { totalPerItem[it] = 0; });
+            let grandTotal = 0;
+
+            arrJagoan.forEach(jagoan => {
+                let totalRow = 0;
+                html += `<tr><td class="text-left">${jagoan}</td>`;
+                targetSuppliesItems.forEach(it => {
+                    let val = matrixJagoan[jagoan] && matrixJagoan[jagoan][it] ? matrixJagoan[jagoan][it] : 0;
+                    totalRow += val;
+                    totalPerItem[it] += val;
+                    html += `<td>${val}</td>`;
+                });
+                grandTotal += totalRow;
+                html += `<td><b>${totalRow}</b></td></tr>`;
+            });
+
+            // Baris Total Keseluruhan Jagoan
+            html += '<tr class="row-total"><td class="text-left">Total</td>';
+            targetSuppliesItems.forEach(it => {
+                html += `<td>${totalPerItem[it]}</td>`;
+            });
+            html += `<td>${grandTotal}</td></tr>`;
         }
 
         html += '</tbody></table>';
         document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
     }
 
-    // --- LOGIKA SALES (KALENDER & VALIDASI MAKS 31 HARI) ---
+    // --- LOGIKA SALES (KALENDER & MAKS 31 HARI) ---
     function terapkanFilterSales() {
         let awal = document.getElementById('tglAwalSales').value;
         let akhir = document.getElementById('tglAkhirSales').value;
