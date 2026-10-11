@@ -18,6 +18,13 @@
         .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
         
+        /* Filter Box */
+        .filter-box { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .filter-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
+        .filter-group select, .filter-group input { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; }
+        .btn-filter { padding: 8px 16px; background-color: #2c3e50; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-reset { padding: 8px 16px; background-color: #7f8c8d; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
         /* Pesan Status */
         .pesan { margin-top: 15px; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 5px; display: none; text-align: center; }
         .berhasil { background-color: #d4edda; color: #155724; }
@@ -41,8 +48,7 @@
         .badge-rank { display: inline-block; width: 22px; height: 22px; line-height: 22px; border-radius: 50%; background: #3498db; color: white; font-weight: bold; font-size: 11px; }
         tr.row-total { background-color: #eaeded; font-weight: bold; }
 
-        /* Dropdown & Chart */
-        select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-weight: bold; margin-bottom: 15px; }
+        /* Chart Box */
         .chart-box { position: relative; height: 320px; width: 100%; margin-bottom: 25px; }
     </style>
 </head>
@@ -64,6 +70,20 @@
 <div class="container">
     <h2>Dashboard Analisis Operational Jago</h2>
     
+    <!-- FILTER TANGGAL -->
+    <div class="filter-box">
+        <div class="filter-group">
+            <label for="tglAwal">Dari Tanggal:</label>
+            <select id="tglAwal"><option value="">-- Semua --</option></select>
+        </div>
+        <div class="filter-group">
+            <label for="tglAkhir">Sampai Tanggal:</label>
+            <select id="tglAkhir"><option value="">-- Semua --</option></select>
+        </div>
+        <button class="btn-filter" onclick="terapkanFilter()">Terapkan Filter</button>
+        <button class="btn-reset" onclick="resetFilter()">Reset All</button>
+    </div>
+
     <!-- NAVIGATION TABS -->
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="bukaTab(event, 'tabRanking')">🏆 Ranking Jagoan & Produk</button>
@@ -131,10 +151,10 @@
     // =======================================================
 
     let rawSalesData = [];
+    let allDatesAvailable = [];
     let chartTotal = null;
     let chartProduk = null;
 
-    // --- SCRIPT NAVIGATION TAB ---
     function bukaTab(evt, tabName) {
         let contents = document.getElementsByClassName("tab-content");
         for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
@@ -144,7 +164,6 @@
         evt.currentTarget.classList.add("active");
     }
 
-    // --- LOAD DATA OTOMATIS SAAT BUKA WEB ---
     window.onload = function() { tarikData(); };
 
     function tarikData() {
@@ -153,12 +172,66 @@
         .then(data => {
             if(data.status === 'sukses') {
                 rawSalesData = data.dataSales;
+                populateDateDropdowns(rawSalesData);
                 prosesDanTampilkanSemua(rawSalesData);
             }
         });
     }
 
-    // --- PIPELINE ANALISIS DATA ---
+    function populateDateDropdowns(data) {
+        let setTgl = new Set();
+        data.forEach(row => {
+            let rawTgl = row[2] ? row[2].toString().trim() : '';
+            let tgl = rawTgl.split(' ')[0];
+            if(tgl) setTgl.add(tgl);
+        });
+        allDatesAvailable = Array.from(setTgl).sort();
+
+        let selAwal = document.getElementById('tglAwal');
+        let selAkhir = document.getElementById('tglAkhir');
+        selAwal.innerHTML = '<option value="">-- Awal --</option>';
+        selAkhir.innerHTML = '<option value="">-- Akhir --</option>';
+
+        allDatesAvailable.forEach(tgl => {
+            selAwal.innerHTML += `<option value="${tgl}">${tgl}</option>`;
+            selAkhir.innerHTML += `<option value="${tgl}">${tgl}</option>`;
+        });
+    }
+
+    function terapkanFilter() {
+        let awal = document.getElementById('tglAwal').value;
+        let akhir = document.getElementById('tglAkhir').value;
+
+        if(!awal && !akhir) {
+            prosesDanTampilkanSemua(rawSalesData);
+            return;
+        }
+
+        let idxAwal = awal ? allDatesAvailable.indexOf(awal) : 0;
+        let idxAkhir = akhir ? allDatesAvailable.indexOf(akhir) : allDatesAvailable.length - 1;
+
+        if(idxAwal > idxAkhir) {
+            alert("Tanggal Awal tidak boleh lebih besar dari Tanggal Akhir!");
+            return;
+        }
+
+        let selectedDates = allDatesAvailable.slice(idxAwal, idxAkhir + 1);
+
+        let filteredData = rawSalesData.filter(row => {
+            let rawTgl = row[2] ? row[2].toString().trim() : '';
+            let tgl = rawTgl.split(' ')[0];
+            return selectedDates.includes(tgl);
+        });
+
+        prosesDanTampilkanSemua(filteredData);
+    }
+
+    function resetFilter() {
+        document.getElementById('tglAwal').value = "";
+        document.getElementById('tglAkhir').value = "";
+        prosesDanTampilkanSemua(rawSalesData);
+    }
+
     function prosesDanTampilkanSemua(data) {
         let rankSales = {}, rankLeftover = {}, rankWasteJagoan = {}, rankWasteProduk = {};
         let matrixSales = {}, matrixWaste = {};
@@ -214,7 +287,6 @@
         document.querySelector(`#${elementId} tbody`).innerHTML = html;
     }
 
-    // --- RENDER TABEL PIVOT + TOTAL HARIAN PER TANGGAL ---
     function renderTabelPivot(containerId, matrixData, arrProduk, arrTgl) {
         let html = '<table><thead><tr><th class="text-left">Nama Produk</th>';
         arrTgl.forEach(tgl => { html += `<th>${tgl}</th>`; });
@@ -237,7 +309,6 @@
             html += `<td><b>${totalRow}</b></td></tr>`;
         });
 
-        // TAMBAHAN: Baris Total Harian per Tanggal di Paling Bawah
         html += '<tr class="row-total"><td class="text-left">Total</td>';
         arrTgl.forEach(tgl => {
             html += `<td>${totalPerTanggal[tgl]}</td>`;
@@ -277,6 +348,7 @@
 
     function updateChartProduk() {
         let pSelected = document.getElementById('selectProduk').value;
+        if(!pSelected) return;
         let dataProduk = window.currentArrTgl.map(tgl => (window.currentMatrixSales[pSelected] && window.currentMatrixSales[pSelected][tgl]) ? window.currentMatrixSales[pSelected][tgl] : 0);
 
         if(chartProduk) chartProduk.destroy();
