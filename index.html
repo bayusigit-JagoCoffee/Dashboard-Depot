@@ -43,17 +43,18 @@
         .tab-content { display: none; padding-top: 20px; }
         .tab-content.active { display: block; }
 
-        /* Style Tabel & Grid Ringkas Tanpa Slide */
+        /* Style Tabel & Grid */
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .table-wrapper { width: 100%; overflow-x: auto; border: 1px solid #bdc3c7; border-radius: 8px; margin-top: 10px; }
-        table { border-collapse: collapse; width: 100%; font-size: 12px; table-layout: fixed; }
-        th, td { border: 1px solid #bdc3c7; padding: 6px 4px; text-align: center; word-wrap: break-word; }
+        table { border-collapse: collapse; width: 100%; font-size: 12px; }
+        th, td { border: 1px solid #bdc3c7; padding: 8px 6px; text-align: center; word-wrap: break-word; }
         th { background-color: #34495e; color: white; font-size: 11px; vertical-align: middle; white-space: normal; line-height: 1.2; }
         td.text-left { text-align: left; font-weight: bold; }
         .badge-rank { display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: #3498db; color: white; font-weight: bold; font-size: 10px; }
         tr.row-total { background-color: #eaeded; font-weight: bold; }
 
         /* Khusus Lebar Kolom Tabel Supplies */
+        .tbl-supplies { table-layout: fixed; }
         .tbl-supplies th:first-child, .tbl-supplies td:first-child { width: 18%; }
 
         .chart-box { position: relative; height: 320px; width: 100%; margin-bottom: 25px; }
@@ -221,15 +222,13 @@
     let chartTotal = null;
     let chartProduk = null;
 
-    // --- PARSER TANGGAL UNIVERSAL SANGAT KETAT & AMAN ---
+    // --- PARSER TANGGAL UNIVERSAL ---
     function normalizeToISO(raw) {
         if(!raw) return '';
-        let str = raw.toString().trim().replace(/^'/, ''); // bersihkan tanda petik
+        let str = raw.toString().trim().replace(/^'/, '');
         if(str.includes('T')) str = str.split('T')[0];
         
         let spaceParts = str.split(' ');
-        
-        // Handling Format Teks: "01 Oct 2026" / "01 Oct 26"
         if(spaceParts.length >= 3 && isNaN(spaceParts[1])) {
             let day = spaceParts[0].padStart(2, '0');
             let monStr = spaceParts[1].substring(0, 3).toLowerCase();
@@ -242,11 +241,9 @@
         let parts = dateOnly.split(/[-/.]/);
 
         if(parts.length === 3) {
-            // Format YYYY-MM-DD
             if(parts[0].length === 4) {
                 return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
             }
-            // Format DD/MM/YYYY atau DD-MM-YYYY
             if(parts[2].length === 4) {
                 return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
@@ -431,7 +428,6 @@
         let queryNamaLower = queryNama.toLowerCase();
         let titleEl = document.getElementById('titleTblRekapJagoan');
 
-        // KASUS A: BILA NAMA JAGOAN DIKETIK / DIFILTER (TAMPILKAN PER TANGGAL)
         if (queryNama !== '') {
             titleEl.innerText = `Detail Checkout Supplies per Tanggal - ${queryNama}`;
             
@@ -491,9 +487,7 @@
             html += '</tbody></table>';
             document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
 
-        } 
-        // KASUS B: BILA FILTER NAMA KOSONG (REKAPITULASI SEMUA JAGOAN)
-        else {
+        } else {
             titleEl.innerText = 'Tabel Rekapitulasi Supplies Per Jagoan';
             
             let matrixJagoan = {};
@@ -621,11 +615,11 @@
             rankWasteJagoan[nama] = (rankWasteJagoan[nama] || 0) + waste;
             rankWasteProduk[produk] = (rankWasteProduk[produk] || 0) + waste;
 
-            if(!matrixSales[produk]) matrixSales[produk] = {};
-            matrixSales[produk][tgl] = (matrixSales[produk][tgl] || 0) + sold;
+            if(!matrixSales[tgl]) matrixSales[tgl] = {};
+            matrixSales[tgl][produk] = (matrixSales[tgl][produk] || 0) + sold;
 
-            if(!matrixWaste[produk]) matrixWaste[produk] = {};
-            matrixWaste[produk][tgl] = (matrixWaste[produk][tgl] || 0) + waste;
+            if(!matrixWaste[tgl]) matrixWaste[tgl] = {};
+            matrixWaste[tgl][produk] = (matrixWaste[tgl][produk] || 0) + waste;
         });
 
         let arrTgl = Array.from(setTanggal).sort();
@@ -636,8 +630,9 @@
         renderTabelRank('tblRankWasteJagoan', rankWasteJagoan, 'Waste');
         renderTabelRank('tblRankWasteProduk', rankWasteProduk, 'Waste');
 
-        renderTabelPivot('containerTblSalesHarian', matrixSales, arrProduk, arrTgl);
-        renderTabelPivot('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
+        // Render Pivot Terbalik: Tanggal di Sumbu Y (Baris), Produk di Sumbu X (Kolom)
+        renderTabelPivotDibalik('containerTblSalesHarian', matrixSales, arrProduk, arrTgl);
+        renderTabelPivotDibalik('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
 
         renderGrafikSales(matrixSales, arrProduk, arrTgl);
     }
@@ -651,33 +646,43 @@
         document.querySelector(`#${elementId} tbody`).innerHTML = html;
     }
 
-    function renderTabelPivot(containerId, matrixData, arrProduk, arrTgl) {
-        let html = '<table><thead><tr><th class="text-left">Nama Produk</th>';
-        arrTgl.forEach(tgl => { html += `<th>${tgl}</th>`; });
-        html += '<th>Total</th></tr></thead><tbody>';
+    // --- FUNGSI TERTAMPIL DIBALIK: BARIS = TANGGAL (Y), KOLOM = PRODUK (X) ---
+    function renderTabelPivotDibalik(containerId, matrixData, arrProduk, arrTgl) {
+        let html = '<table><thead><tr><th class="text-left" style="min-width:100px;">Tanggal</th>';
+        arrProduk.forEach(p => { html += `<th>${p}</th>`; });
+        html += '<th style="min-width:70px;">Total</th></tr></thead><tbody>';
 
-        let totalPerTanggal = {};
-        arrTgl.forEach(tgl => { totalPerTanggal[tgl] = 0; });
-        let grandTotal = 0;
+        if(arrTgl.length === 0) {
+            html += `<tr><td colspan="${arrProduk.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data pada periode ini</td></tr>`;
+        } else {
+            let totalPerProduk = {};
+            arrProduk.forEach(p => { totalPerProduk[p] = 0; });
+            let grandTotal = 0;
 
-        arrProduk.forEach(p => {
-            let totalRow = 0;
-            html += `<tr><td class="text-left">${p}</td>`;
+            // Loop Baris berdasarkan Tanggal
             arrTgl.forEach(tgl => {
-                let val = matrixData[p] && matrixData[p][tgl] ? matrixData[p][tgl] : 0;
-                totalRow += val;
-                totalPerTanggal[tgl] += val;
-                html += `<td>${val}</td>`;
+                let totalRow = 0;
+                html += `<tr><td class="text-left">${tgl}</td>`;
+                
+                // Loop Kolom berdasarkan Produk
+                arrProduk.forEach(p => {
+                    let val = matrixData[tgl] && matrixData[tgl][p] ? matrixData[tgl][p] : 0;
+                    totalRow += val;
+                    totalPerProduk[p] += val;
+                    html += `<td>${val}</td>`;
+                });
+                
+                grandTotal += totalRow;
+                html += `<td><b>${totalRow}</b></td></tr>`;
             });
-            grandTotal += totalRow;
-            html += `<td><b>${totalRow}</b></td></tr>`;
-        });
 
-        html += '<tr class="row-total"><td class="text-left">Total</td>';
-        arrTgl.forEach(tgl => {
-            html += `<td>${totalPerTanggal[tgl]}</td>`;
-        });
-        html += `<td>${grandTotal}</td></tr>`;
+            // Baris Paling Bawah: Total Keseluruhan Per Produk
+            html += '<tr class="row-total"><td class="text-left">Total</td>';
+            arrProduk.forEach(p => {
+                html += `<td>${totalPerProduk[p]}</td>`;
+            });
+            html += `<td>${grandTotal}</td></tr>`;
+        }
 
         html += '</tbody></table>';
         document.getElementById(containerId).innerHTML = html;
@@ -686,7 +691,7 @@
     function renderGrafikSales(matrixSales, arrProduk, arrTgl) {
         let totalHarian = arrTgl.map(tgl => {
             let sum = 0;
-            arrProduk.forEach(p => { sum += (matrixSales[p] && matrixSales[p][tgl]) ? matrixSales[p][tgl] : 0; });
+            arrProduk.forEach(p => { sum += (matrixSales[tgl] && matrixSales[tgl][p]) ? matrixSales[tgl][p] : 0; });
             return sum;
         });
 
@@ -713,7 +718,7 @@
     function updateChartProduk() {
         let pSelected = document.getElementById('selectProduk').value;
         if(!pSelected) return;
-        let dataProduk = window.currentArrTgl.map(tgl => (window.currentMatrixSales[pSelected] && window.currentMatrixSales[pSelected][tgl]) ? window.currentMatrixSales[pSelected][tgl] : 0);
+        let dataProduk = window.currentArrTgl.map(tgl => (window.currentMatrixSales[tgl] && window.currentMatrixSales[tgl][pSelected]) ? window.currentMatrixSales[tgl][pSelected] : 0);
 
         if(chartProduk) chartProduk.destroy();
         let ctxProduk = document.getElementById('chartPerProduk').getContext('2d');
