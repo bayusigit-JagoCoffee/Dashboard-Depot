@@ -178,7 +178,7 @@
         <div class="table-wrapper" id="containerTblSuppliesHarian"></div>
     </div>
 
-    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN -->
+    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN (DINAMIS SENSITIF FILTER) -->
     <div id="tabSuppliesJagoan" class="tab-content-supplies" style="display:none; padding-top:20px;">
         <div class="filter-box" style="background-color: #f8fafc;">
             <div class="filter-group">
@@ -188,7 +188,7 @@
                 <button class="btn-reset" onclick="resetSearchJagoan()" style="padding:7px 12px; font-size:12px;">Bersihkan</button>
             </div>
         </div>
-        <h3>Tabel Rekapitulasi Supplies Per Jagoan</h3>
+        <h3 id="titleTblRekapJagoan">Tabel Rekapitulasi Supplies Per Jagoan</h3>
         <div class="table-wrapper" id="containerTblSuppliesJagoan"></div>
     </div>
 </div>
@@ -196,7 +196,7 @@
 <script>
     // =======================================================
     // PASTE URL APPS SCRIPT ANDA DI BAWAH INI:
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
+    const scriptURL = 'URL_APPS_SCRIPT_ANDA_DI_SINI'; 
     // =======================================================
 
     const targetSuppliesItems = [
@@ -409,64 +409,132 @@
         renderRekapJagoanSupplies();
     }
 
-    // --- RENDER REKAP JAGOAN DENGAN TAMPILAN MATRIX PIVOT RINGKAS ---
+    // --- RENDER REKAP JAGOAN DINAMIS (SAAT DIFILTER -> TAMPILKAN RINCIAN TANGGAL) ---
     function renderRekapJagoanSupplies() {
-        let queryNama = document.getElementById('searchJagoanSupplies').value.trim().toLowerCase();
-        let matrixJagoan = {};
-        let setJagoanFound = new Set();
+        let queryNama = document.getElementById('searchJagoanSupplies').value.trim();
+        let queryNamaLower = queryNama.toLowerCase();
+        let titleEl = document.getElementById('titleTblRekapJagoan');
 
-        filteredSuppliesData.forEach(row => {
-            let nama = row[0];
-            let item = row[1];
-            let qty = parseInt(row[3]) || 0;
+        // KASUS A: BILA NAMA JAGOAN DIKETIK / DIFILTER (TAMPILAN RINCIAN PER TANGGAL)
+        if (queryNama !== '') {
+            titleEl.innerText = `Detail Checkout Supplies per Tanggal - ${queryNama}`;
+            
+            let matrixTgl = {};
+            let setTglFound = new Set();
 
-            if(!nama || !item || !isTargetItem(item)) return;
+            filteredSuppliesData.forEach(row => {
+                let nama = row[0];
+                let item = row[1];
+                let tgl = normalizeToISO(row[2]);
+                let qty = parseInt(row[3]) || 0;
 
-            if(queryNama && !nama.toLowerCase().includes(queryNama)) return;
+                if(!nama || !item || !tgl || !isTargetItem(item)) return;
 
-            let normItem = getNormalizedItemName(item);
+                if(nama.toLowerCase().includes(queryNamaLower)) {
+                    let normItem = getNormalizedItemName(item);
+                    setTglFound.add(tgl);
 
-            setJagoanFound.add(nama);
+                    if(!matrixTgl[tgl]) matrixTgl[tgl] = {};
+                    matrixTgl[tgl][normItem] = (matrixTgl[tgl][normItem] || 0) + qty;
+                }
+            });
 
-            if(!matrixJagoan[nama]) matrixJagoan[nama] = {};
-            matrixJagoan[nama][normItem] = (matrixJagoan[nama][normItem] || 0) + qty;
-        });
+            let arrTgl = Array.from(setTglFound).sort();
 
-        let arrJagoan = Array.from(setJagoanFound).sort();
+            let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Tanggal</th>';
+            targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
+            html += '<th>Total</th></tr></thead><tbody>';
 
-        let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Nama Jagoan</th>';
-        targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
-        html += '<th>Total</th></tr></thead><tbody>';
+            if(arrTgl.length === 0) {
+                html += `<tr><td colspan="${targetSuppliesItems.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data checkout supplies untuk Jagoan "${queryNama}" pada periode ini</td></tr>`;
+            } else {
+                let totalPerItem = {};
+                targetSuppliesItems.forEach(it => { totalPerItem[it] = 0; });
+                let grandTotal = 0;
 
-        if(arrJagoan.length === 0) {
-            html += `<tr><td colspan="${targetSuppliesItems.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data checkout supplies untuk nama Jagoan ini</td></tr>`;
-        } else {
-            let totalPerItem = {};
-            targetSuppliesItems.forEach(it => { totalPerItem[it] = 0; });
-            let grandTotal = 0;
-
-            arrJagoan.forEach(jagoan => {
-                let totalRow = 0;
-                html += `<tr><td class="text-left">${jagoan}</td>`;
-                targetSuppliesItems.forEach(it => {
-                    let val = matrixJagoan[jagoan] && matrixJagoan[jagoan][it] ? matrixJagoan[jagoan][it] : 0;
-                    totalRow += val;
-                    totalPerItem[it] += val;
-                    html += `<td>${val}</td>`;
+                arrTgl.forEach(tgl => {
+                    let totalRow = 0;
+                    html += `<tr><td class="text-left">${tgl}</td>`;
+                    targetSuppliesItems.forEach(it => {
+                        let val = matrixTgl[tgl] && matrixTgl[tgl][it] ? matrixTgl[tgl][it] : 0;
+                        totalRow += val;
+                        totalPerItem[it] += val;
+                        html += `<td>${val}</td>`;
+                    });
+                    grandTotal += totalRow;
+                    html += `<td><b>${totalRow}</b></td></tr>`;
                 });
-                grandTotal += totalRow;
-                html += `<td><b>${totalRow}</b></td></tr>`;
+
+                // Baris Total Keseluruhan
+                html += '<tr class="row-total"><td class="text-left">Total</td>';
+                targetSuppliesItems.forEach(it => {
+                    html += `<td>${totalPerItem[it]}</td>`;
+                });
+                html += `<td>${grandTotal}</td></tr>`;
+            }
+
+            html += '</tbody></table>';
+            document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
+
+        } 
+        // KASUS B: BILA FILTER NAMA KOSONG (TAMPILAN REKAPITULASI SEMUA JAGOAN)
+        else {
+            titleEl.innerText = 'Tabel Rekapitulasi Supplies Per Jagoan';
+            
+            let matrixJagoan = {};
+            let setJagoanFound = new Set();
+
+            filteredSuppliesData.forEach(row => {
+                let nama = row[0];
+                let item = row[1];
+                let qty = parseInt(row[3]) || 0;
+
+                if(!nama || !item || !isTargetItem(item)) return;
+
+                let normItem = getNormalizedItemName(item);
+
+                setJagoanFound.add(nama);
+
+                if(!matrixJagoan[nama]) matrixJagoan[nama] = {};
+                matrixJagoan[nama][normItem] = (matrixJagoan[nama][normItem] || 0) + qty;
             });
 
-            html += '<tr class="row-total"><td class="text-left">Total</td>';
-            targetSuppliesItems.forEach(it => {
-                html += `<td>${totalPerItem[it]}</td>`;
-            });
-            html += `<td>${grandTotal}</td></tr>`;
+            let arrJagoan = Array.from(setJagoanFound).sort();
+
+            let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Nama Jagoan</th>';
+            targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            if(arrJagoan.length === 0) {
+                html += `<tr><td colspan="${targetSuppliesItems.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data checkout supplies untuk jagoan</td></tr>`;
+            } else {
+                let totalPerItem = {};
+                targetSuppliesItems.forEach(it => { totalPerItem[it] = 0; });
+                let grandTotal = 0;
+
+                arrJagoan.forEach(jagoan => {
+                    let totalRow = 0;
+                    html += `<tr><td class="text-left">${jagoan}</td>`;
+                    targetSuppliesItems.forEach(it => {
+                        let val = matrixJagoan[jagoan] && matrixJagoan[jagoan][it] ? matrixJagoan[jagoan][it] : 0;
+                        totalRow += val;
+                        totalPerItem[it] += val;
+                        html += `<td>${val}</td>`;
+                    });
+                    grandTotal += totalRow;
+                    html += `<td><b>${totalRow}</b></td></tr>`;
+                });
+
+                html += '<tr class="row-total"><td class="text-left">Total</td>';
+                targetSuppliesItems.forEach(it => {
+                    html += `<td>${totalPerItem[it]}</td>`;
+                });
+                html += `<td>${grandTotal}</td></tr>`;
+            }
+
+            html += '</tbody></table>';
+            document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
         }
-
-        html += '</tbody></table>';
-        document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
     }
 
     // --- LOGIKA SALES ---
