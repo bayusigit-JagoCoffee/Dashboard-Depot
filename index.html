@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Analisis Penjualan & Waste Jago</title>
+    <title>Dashboard Operational & Checkout Supplies Jago</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
-        .container { background-color: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 1100px; margin: 0 auto 20px auto; }
+        .container { background-color: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 1150px; margin: 0 auto 20px auto; }
         h2, h3 { color: #2c3e50; margin-top: 0; }
         
+        /* Menu Switcher Utama */
+        .mode-switcher { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 3px solid #2c3e50; padding-bottom: 10px; }
+        .btn-mode { padding: 12px 24px; font-size: 15px; font-weight: bold; border: none; background-color: #e2e8f0; color: #475569; border-radius: 8px 8px 0 0; cursor: pointer; transition: 0.2s; }
+        .btn-mode.active { background-color: #2c3e50; color: white; }
+
         /* Area Upload */
         .upload-area { border: 2px dashed #3498db; border-radius: 8px; padding: 20px; text-align: center; background-color: #f0f8ff; cursor: pointer; }
         input[type="file"] { display: none; }
@@ -21,7 +26,7 @@
         /* Filter Box */
         .filter-box { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .filter-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
-        .filter-group select, .filter-group input { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; }
+        .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; }
         .btn-filter { padding: 8px 16px; background-color: #2c3e50; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-reset { padding: 8px 16px; background-color: #7f8c8d; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
@@ -48,15 +53,26 @@
         .badge-rank { display: inline-block; width: 22px; height: 22px; line-height: 22px; border-radius: 50%; background: #3498db; color: white; font-weight: bold; font-size: 11px; }
         tr.row-total { background-color: #eaeded; font-weight: bold; }
 
-        /* Chart Box */
         .chart-box { position: relative; height: 320px; width: 100%; margin-bottom: 25px; }
+        .radio-upload { display: flex; gap: 20px; justify-content: center; margin-bottom: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<!-- KOTAK UPLOAD CSV -->
 <div class="container">
-    <h2>Upload Penjualan</h2>
+    <!-- MODE SWITCHER UTAMA -->
+    <div class="mode-switcher">
+        <button class="btn-mode active" onclick="gantiMode('sales')">📊 Dashboard Penjualan & Waste</button>
+        <button class="btn-mode" onclick="gantiMode('supplies')">📦 Dashboard Checkout Supplies</button>
+    </div>
+
+    <!-- KOTAK UPLOAD CSV -->
+    <h2>Upload Data CSV</h2>
+    <div class="radio-upload">
+        <label><input type="radio" name="uploadType" value="sales" checked> Data Penjualan Jagoan</label>
+        <label><input type="radio" name="uploadType" value="supplies"> Data Checkout Supplies</label>
+    </div>
+
     <div class="upload-area" onclick="document.getElementById('csvFile').click()">
         <span class="btn-blue">Pilih File CSV</span>
         <input type="file" id="csvFile" accept=".csv" />
@@ -66,32 +82,29 @@
     <div id="pesanUpload" class="pesan"></div>
 </div>
 
-<!-- KOTAK DASHBOARD ANALISIS -->
-<div class="container">
-    <h2>Dashboard Analisis Operational Jago</h2>
+<!-- DASHBOARD MODE 1: PENJUALAN & WASTE -->
+<div id="sectionSales" class="container">
+    <h2>Dashboard Analisis Penjualan & Waste</h2>
     
-    <!-- FILTER TANGGAL -->
     <div class="filter-box">
         <div class="filter-group">
-            <label for="tglAwal">Dari Tanggal:</label>
-            <select id="tglAwal"><option value="">-- Semua --</option></select>
+            <label for="tglAwalSales">Dari Tanggal:</label>
+            <select id="tglAwalSales"><option value="">-- Semua --</option></select>
         </div>
         <div class="filter-group">
-            <label for="tglAkhir">Sampai Tanggal:</label>
-            <select id="tglAkhir"><option value="">-- Semua --</option></select>
+            <label for="tglAkhirSales">Sampai Tanggal:</label>
+            <select id="tglAkhirSales"><option value="">-- Semua --</option></select>
         </div>
-        <button class="btn-filter" onclick="terapkanFilter()">Terapkan Filter</button>
-        <button class="btn-reset" onclick="resetFilter()">Reset All</button>
+        <button class="btn-filter" onclick="terapkanFilterSales()">Terapkan Filter</button>
+        <button class="btn-reset" onclick="resetFilterSales()">Reset All</button>
     </div>
 
-    <!-- NAVIGATION TABS -->
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="bukaTab(event, 'tabRanking')">🏆 Ranking Jagoan & Produk</button>
         <button class="tab-btn" onclick="bukaTab(event, 'tabPenjualanHarian')">📈 Tabel & Grafik Penjualan</button>
         <button class="tab-btn" onclick="bukaTab(event, 'tabWasteHarian')">🗑️ Tabel Waste Harian</button>
     </div>
 
-    <!-- TAB 1: RANKING -->
     <div id="tabRanking" class="tab-content active">
         <div class="grid-2">
             <div>
@@ -116,32 +129,63 @@
         </div>
     </div>
 
-    <!-- TAB 2: TABEL & GRAFIK PENJUALAN -->
     <div id="tabPenjualanHarian" class="tab-content">
         <h3>5. Grafik Penjualan Total & Per Produk</h3>
-        
-        <div class="chart-box">
-            <canvas id="chartTotalSales"></canvas>
-        </div>
-
+        <div class="chart-box"><canvas id="chartTotalSales"></canvas></div>
         <div style="margin-top: 20px;">
             <label for="selectProduk"><b>Pilih Produk: </b></label>
             <select id="selectProduk" onchange="updateChartProduk()"></select>
-            <div class="chart-box">
-                <canvas id="chartPerProduk"></canvas>
-            </div>
+            <div class="chart-box"><canvas id="chartPerProduk"></canvas></div>
         </div>
-
         <h3>Tabel Penjualan Produk Harian</h3>
         <div class="table-wrapper" id="containerTblSalesHarian"></div>
     </div>
 
-    <!-- TAB 3: TABEL WASTE HARIAN -->
     <div id="tabWasteHarian" class="tab-content">
         <h3>6. Tabel Waste Produk Setiap Hari</h3>
         <div class="table-wrapper" id="containerTblWasteHarian"></div>
     </div>
+</div>
 
+<!-- DASHBOARD MODE 2: CHECKOUT SUPPLIES -->
+<div id="sectionSupplies" class="container" style="display:none;">
+    <h2>Dashboard Checkout Supplies Jagoan</h2>
+    
+    <div class="filter-box">
+        <div class="filter-group">
+            <label for="tglAwalSupplies">Dari Tanggal:</label>
+            <select id="tglAwalSupplies"><option value="">-- Semua --</option></select>
+        </div>
+        <div class="filter-group">
+            <label for="tglAkhirSupplies">Sampai Tanggal:</label>
+            <select id="tglAkhirSupplies"><option value="">-- Semua --</option></select>
+        </div>
+        <button class="btn-filter" onclick="terapkanFilterSupplies()">Terapkan Filter</button>
+        <button class="btn-reset" onclick="resetFilterSupplies()">Reset All</button>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="bukaTabSupplies(event, 'tabSuppliesHarian')">📅 1. Tabel Rekap Supplies Harian</button>
+        <button class="tab-btn" onclick="bukaTabSupplies(event, 'tabSuppliesJagoan')">👤 2. Rekap Per Jagoan</button>
+    </div>
+
+    <!-- TAB 1 SUPPLIES: HARIAN -->
+    <div id="tabSuppliesHarian" class="tab-content-supplies" style="display:block; padding-top:20px;">
+        <h3>Tabel Rekapitulasi Supplies Per Tanggal</h3>
+        <div class="table-wrapper" id="containerTblSuppliesHarian"></div>
+    </div>
+
+    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN -->
+    <div id="tabSuppliesJagoan" class="tab-content-supplies" style="display:none; padding-top:20px;">
+        <div class="filter-box" style="background-color: #f8fafc;">
+            <div class="filter-group">
+                <label for="selectJagoanSupplies">Pilih Nama Jagoan:</label>
+                <select id="selectJagoanSupplies" onchange="renderRekapJagoanSupplies()"><option value="">-- Semua Jagoan --</option></select>
+            </div>
+        </div>
+        <h3>Detail Checkout Item per Jagoan</h3>
+        <div class="table-wrapper" id="containerTblSuppliesJagoan"></div>
+    </div>
 </div>
 
 <script>
@@ -151,9 +195,26 @@
     // =======================================================
 
     let rawSalesData = [];
-    let allDatesAvailable = [];
+    let rawSuppliesData = [];
+    let datesSalesAvailable = [];
+    let datesSuppliesAvailable = [];
+    let filteredSuppliesData = [];
+    
     let chartTotal = null;
     let chartProduk = null;
+
+    function gantiMode(mode) {
+        document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
+        if (mode === 'sales') {
+            document.querySelectorAll('.btn-mode')[0].classList.add('active');
+            document.getElementById('sectionSales').style.display = 'block';
+            document.getElementById('sectionSupplies').style.display = 'none';
+        } else {
+            document.querySelectorAll('.btn-mode')[1].classList.add('active');
+            document.getElementById('sectionSales').style.display = 'none';
+            document.getElementById('sectionSupplies').style.display = 'block';
+        }
+    }
 
     function bukaTab(evt, tabName) {
         let contents = document.getElementsByClassName("tab-content");
@@ -164,6 +225,15 @@
         evt.currentTarget.classList.add("active");
     }
 
+    function bukaTabSupplies(evt, tabName) {
+        let contents = document.getElementsByClassName("tab-content-supplies");
+        for (let i = 0; i < contents.length; i++) contents[i].style.display = "none";
+        let btns = evt.currentTarget.parentNode.getElementsByClassName("tab-btn");
+        for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.classList.add("active");
+    }
+
     window.onload = function() { tarikData(); };
 
     function tarikData() {
@@ -171,51 +241,198 @@
         .then(res => res.json())
         .then(data => {
             if(data.status === 'sukses') {
-                rawSalesData = data.dataSales;
-                populateDateDropdowns(rawSalesData);
-                prosesDanTampilkanSemua(rawSalesData);
+                rawSalesData = data.dataSales || [];
+                rawSuppliesData = data.dataSupplies || [];
+
+                populateFilterSales(rawSalesData);
+                prosesDanTampilkanSales(rawSalesData);
+
+                populateFilterSupplies(rawSuppliesData);
+                filteredSuppliesData = rawSuppliesData;
+                prosesDanTampilkanSupplies(rawSuppliesData);
             }
         });
     }
 
-    function populateDateDropdowns(data) {
+    // --- LOGIKA PIPELINE SUPPLIES ---
+    function populateFilterSupplies(data) {
         let setTgl = new Set();
         data.forEach(row => {
-            let rawTgl = row[2] ? row[2].toString().trim() : '';
-            let tgl = rawTgl.split(' ')[0];
+            let rawTgl = row[2] ? row[2].toString().trim() : ''; // Kolom C = Tanggal (Approved At)
+            let tgl = rawTgl ? rawTgl.split(' ')[0] : '';
             if(tgl) setTgl.add(tgl);
         });
-        allDatesAvailable = Array.from(setTgl).sort();
+        datesSuppliesAvailable = Array.from(setTgl).sort();
 
-        let selAwal = document.getElementById('tglAwal');
-        let selAkhir = document.getElementById('tglAkhir');
+        let selAwal = document.getElementById('tglAwalSupplies');
+        let selAkhir = document.getElementById('tglAkhirSupplies');
         selAwal.innerHTML = '<option value="">-- Awal --</option>';
         selAkhir.innerHTML = '<option value="">-- Akhir --</option>';
 
-        allDatesAvailable.forEach(tgl => {
+        datesSuppliesAvailable.forEach(tgl => {
             selAwal.innerHTML += `<option value="${tgl}">${tgl}</option>`;
             selAkhir.innerHTML += `<option value="${tgl}">${tgl}</option>`;
         });
     }
 
-    function terapkanFilter() {
-        let awal = document.getElementById('tglAwal').value;
-        let akhir = document.getElementById('tglAkhir').value;
+    function terapkanFilterSupplies() {
+        let awal = document.getElementById('tglAwalSupplies').value;
+        let akhir = document.getElementById('tglAkhirSupplies').value;
 
         if(!awal && !akhir) {
-            prosesDanTampilkanSemua(rawSalesData);
+            filteredSuppliesData = rawSuppliesData;
+            prosesDanTampilkanSupplies(rawSuppliesData);
             return;
         }
 
-        let idxAwal = awal ? allDatesAvailable.indexOf(awal) : 0;
-        let idxAkhir = akhir ? allDatesAvailable.indexOf(akhir) : allDatesAvailable.length - 1;
+        let idxAwal = awal ? datesSuppliesAvailable.indexOf(awal) : 0;
+        let idxAkhir = akhir ? datesSuppliesAvailable.indexOf(akhir) : datesSuppliesAvailable.length - 1;
 
         if(idxAwal > idxAkhir) {
             alert("Tanggal Awal tidak boleh lebih besar dari Tanggal Akhir!");
             return;
         }
 
-        let selectedDates = allDatesAvailable.slice(idxAwal, idxAkhir + 1);
+        let selectedDates = datesSuppliesAvailable.slice(idxAwal, idxAkhir + 1);
+
+        filteredSuppliesData = rawSuppliesData.filter(row => {
+            let rawTgl = row[2] ? row[2].toString().trim() : '';
+            let tgl = rawTgl ? rawTgl.split(' ')[0] : '';
+            return selectedDates.includes(tgl);
+        });
+
+        prosesDanTampilkanSupplies(filteredSuppliesData);
+    }
+
+    function resetFilterSupplies() {
+        document.getElementById('tglAwalSupplies').value = "";
+        document.getElementById('tglAkhirSupplies').value = "";
+        filteredSuppliesData = rawSuppliesData;
+        prosesDanTampilkanSupplies(rawSuppliesData);
+    }
+
+    function prosesDanTampilkanSupplies(data) {
+        let matrixSupplies = {};
+        let setTanggal = new Set(), setItem = new Set(), setJagoan = new Set();
+
+        data.forEach(row => {
+            let nama = row[0];
+            let rawTgl = row[2] ? row[2].toString().trim() : '';
+            let tgl = rawTgl ? rawTgl.split(' ')[0] : '';
+            let item = row[1]; // Item
+            let qty = parseInt(row[3]) || 0; // Approved Quantity
+
+            if(!tgl || !item) return;
+
+            setTanggal.add(tgl);
+            setItem.add(item);
+            if(nama) setJagoan.add(nama);
+
+            if(!matrixSupplies[tgl]) matrixSupplies[tgl] = {};
+            matrixSupplies[tgl][item] = (matrixSupplies[tgl][item] || 0) + qty;
+        });
+
+        let arrTgl = Array.from(setTanggal).sort();
+        let arrItem = Array.from(setItem).sort();
+
+        // 1. Output 1: Render Tabel Pivot Harian Supplies (Baris = Tanggal, Kolom = Item)
+        let html = '<table><thead><tr><th class="text-left">Tanggal</th>';
+        arrItem.forEach(it => { html += `<th>${it}</th>`; });
+        html += '</tr></thead><tbody>';
+
+        arrTgl.forEach(tgl => {
+            html += `<tr><td class="text-left">${tgl}</td>`;
+            arrItem.forEach(it => {
+                let val = matrixSupplies[tgl] && matrixSupplies[tgl][it] ? matrixSupplies[tgl][it] : 0;
+                html += `<td>${val}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('containerTblSuppliesHarian').innerHTML = html;
+
+        // Populate Dropdown Jagoan
+        let selJagoan = document.getElementById('selectJagoanSupplies');
+        let currentSelected = selJagoan.value;
+        selJagoan.innerHTML = '<option value="">-- Semua Jagoan --</option>';
+        Array.from(setJagoan).sort().forEach(j => {
+            selJagoan.innerHTML += `<option value="${j}">${j}</option>`;
+        });
+        selJagoan.value = currentSelected;
+
+        // 2. Output 2: Render Rekap Jagoan
+        renderRekapJagoanSupplies();
+    }
+
+    function renderRekapJagoanSupplies() {
+        let jagoanSelected = document.getElementById('selectJagoanSupplies').value;
+        let rekap = {};
+
+        filteredSuppliesData.forEach(row => {
+            let nama = row[0];
+            let item = row[1];
+            let qty = parseInt(row[3]) || 0;
+
+            if(!item) return;
+            if(jagoanSelected && nama !== jagoanSelected) return;
+
+            if(!rekap[nama]) rekap[nama] = {};
+            rekap[nama][item] = (rekap[nama][item] || 0) + qty;
+        });
+
+        let html = '<table><thead><tr><th class="text-left">Nama Jagoan</th><th class="text-left">Nama Item</th><th>Total Quantity Checkout</th></tr></thead><tbody>';
+        
+        let hasData = false;
+        for(let jagoan in rekap) {
+            for(let item in rekap[jagoan]) {
+                hasData = true;
+                html += `<tr><td class="text-left">${jagoan}</td><td class="text-left">${item}</td><td><b>${rekap[jagoan][item]}</b></td></tr>`;
+            }
+        }
+
+        if(!hasData) {
+            html += '<tr><td colspan="3" style="color:#7f8c8d;">Tidak ada data checkout untuk periode/jagoan ini</td></tr>';
+        }
+
+        html += '</tbody></table>';
+        document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
+    }
+
+    // --- LOGIKA PIPELINE PENJUALAN & WASTE ---
+    function populateFilterSales(data) {
+        let setTgl = new Set();
+        data.forEach(row => {
+            let rawTgl = row[2] ? row[2].toString().trim() : '';
+            let tgl = rawTgl.split(' ')[0];
+            if(tgl) setTgl.add(tgl);
+        });
+        datesSalesAvailable = Array.from(setTgl).sort();
+
+        let selAwal = document.getElementById('tglAwalSales');
+        let selAkhir = document.getElementById('tglAkhirSales');
+        selAwal.innerHTML = '<option value="">-- Awal --</option>';
+        selAkhir.innerHTML = '<option value="">-- Akhir --</option>';
+
+        datesSalesAvailable.forEach(tgl => {
+            selAwal.innerHTML += `<option value="${tgl}">${tgl}</option>`;
+            selAkhir.innerHTML += `<option value="${tgl}">${tgl}</option>`;
+        });
+    }
+
+    function terapkanFilterSales() {
+        let awal = document.getElementById('tglAwalSales').value;
+        let akhir = document.getElementById('tglAkhirSales').value;
+
+        if(!awal && !akhir) {
+            prosesDanTampilkanSales(rawSalesData);
+            return;
+        }
+
+        let idxAwal = awal ? datesSalesAvailable.indexOf(awal) : 0;
+        let idxAkhir = akhir ? datesSalesAvailable.indexOf(akhir) : datesSalesAvailable.length - 1;
+
+        let selectedDates = datesSalesAvailable.slice(idxAwal, idxAkhir + 1);
 
         let filteredData = rawSalesData.filter(row => {
             let rawTgl = row[2] ? row[2].toString().trim() : '';
@@ -223,16 +440,16 @@
             return selectedDates.includes(tgl);
         });
 
-        prosesDanTampilkanSemua(filteredData);
+        prosesDanTampilkanSales(filteredData);
     }
 
-    function resetFilter() {
-        document.getElementById('tglAwal').value = "";
-        document.getElementById('tglAkhir').value = "";
-        prosesDanTampilkanSemua(rawSalesData);
+    function resetFilterSales() {
+        document.getElementById('tglAwalSales').value = "";
+        document.getElementById('tglAkhirSales').value = "";
+        prosesDanTampilkanSales(rawSalesData);
     }
 
-    function prosesDanTampilkanSemua(data) {
+    function prosesDanTampilkanSales(data) {
         let rankSales = {}, rankLeftover = {}, rankWasteJagoan = {}, rankWasteProduk = {};
         let matrixSales = {}, matrixWaste = {};
         let setTanggal = new Set(), setProduk = new Set();
@@ -370,23 +587,38 @@
         if (!file) return;
         document.getElementById('fileName').innerText = "File: " + file.name;
         
+        let uploadType = document.querySelector('input[name="uploadType"]:checked').value;
+
         Papa.parse(file, {
             header: true, skipEmptyLines: true,
             transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
             complete: function(results) {
                 parsedDataUpload = [];
                 results.data.forEach(row => {
-                    let id = row['Jagoan ID'] || row['Jagoan Id'] || row['jagoan id'];
-                    if(id) {
+                    if (uploadType === "sales") {
+                        let id = row['Jagoan ID'] || row['Jagoan Id'] || row['jagoan id'];
+                        if(id) {
+                            let nama = row['Name'] || '';
+                            let rawApprove = row['Approved At'] ? row['Approved At'].trim() : '';
+                            let tanggal = rawApprove ? rawApprove.split(' ')[0] : '';
+                            let item = row['Item Name'] || '';
+                            let sold = parseInt(row['Sold']) || 0;
+                            let exp = parseInt(row['Expired']) || 0;
+                            let left = parseInt(row['Leftover']) || 0;
+                            parsedDataUpload.push([nama, id, tanggal, item, sold, exp+left, exp, left]);
+                        }
+                    } else if (uploadType === "supplies") {
                         let nama = row['Name'] || '';
+                        let id = row['Jagoan ID'] || row['Jagoan Id'] || '';
+                        let item = row['Item'] || row['Item Name'] || '';
+                        
                         let rawApprove = row['Approved At'] ? row['Approved At'].trim() : '';
                         let tanggal = rawApprove ? rawApprove.split(' ')[0] : '';
+                        let appQty = parseInt(row['Approved Quant']) || 0;
                         
-                        let item = row['Item Name'] || '';
-                        let sold = parseInt(row['Sold']) || 0;
-                        let exp = parseInt(row['Expired']) || 0;
-                        let left = parseInt(row['Leftover']) || 0;
-                        parsedDataUpload.push([nama, id, tanggal, item, sold, exp+left, exp, left]);
+                        if(item) {
+                            parsedDataUpload.push([nama, item, tanggal, appQty, id]);
+                        }
                     }
                 });
                 if(parsedDataUpload.length > 0) document.getElementById('btnProses').disabled = false;
@@ -400,18 +632,19 @@
         pesanUpload.className = 'pesan proses'; 
         pesanUpload.style.display = 'block';
 
+        let uploadType = document.querySelector('input[name="uploadType"]:checked').value;
         const CHUNK_SIZE = 300; 
         const totalData = parsedDataUpload.length;
 
         for (let i = 0; i < totalData; i += CHUNK_SIZE) {
             const chunk = parsedDataUpload.slice(i, i + CHUNK_SIZE);
             const progress = Math.min(i + CHUNK_SIZE, totalData);
-            pesanUpload.innerText = `Mengirim data... (${progress} / ${totalData} baris)`;
+            pesanUpload.innerText = `Mengirim data ${uploadType}... (${progress} / ${totalData} baris)`;
 
             try {
                 let response = await fetch(scriptURL, { 
                     method: 'POST', 
-                    body: JSON.stringify(chunk), 
+                    body: JSON.stringify({ type: uploadType, data: chunk }), 
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     redirect: 'follow'
                 });
@@ -436,7 +669,7 @@
         }
 
         pesanUpload.className = 'pesan berhasil'; 
-        pesanUpload.innerText = `Selesai! Berhasil mengunggah total ${totalData} baris. Memperbarui analisis...`;
+        pesanUpload.innerText = `Selesai! Berhasil mengunggah total ${totalData} baris data ${uploadType}. Memperbarui analisis...`;
         
         setTimeout(() => { 
             pesanUpload.style.display = 'none'; 
