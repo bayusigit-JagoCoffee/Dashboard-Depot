@@ -216,15 +216,17 @@
     let chartTotal = null;
     let chartProduk = null;
 
-    // --- PARSER TANGGAL PRESISI KE FORMAT YYYY-MM-DD ---
+    // --- PARSER TANGGAL MURNI STRING (ANTI SHIFT ZONA WAKTU) ---
     function normalizeToISO(raw) {
         if(!raw) return '';
-        let str = raw.toString().trim();
+        let str = raw.toString().trim().replace(/^'/, ''); // Hapus tanda petik awal jika ada
+        
+        // Hapus jam & timezone jika ada
         if(str.includes('T')) str = str.split('T')[0];
-        let parts = str.split(' ')[0].split(/[-/]/);
-
-        // Format "01 Oct 26" / "01 Oct 2026"
+        
         let spaceParts = str.split(' ');
+        
+        // Kasus "01 Oct 26" / "01 Oct 2026"
         if(spaceParts.length >= 3 && isNaN(spaceParts[1])) {
             let day = spaceParts[0].padStart(2, '0');
             let monStr = spaceParts[1].substring(0, 3).toLowerCase();
@@ -233,15 +235,18 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Format "YYYY-MM-DD"
+        let dateOnly = spaceParts[0];
+        let parts = dateOnly.split(/[-/]/);
+
+        // Kasus "2026-10-01"
         if(parts[0].length === 4) {
             return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
         }
-        // Format "DD-MM-YYYY" / "DD/MM/YYYY"
+        // Kasus "01/10/2026" / "1/10/2026"
         if(parts.length === 3 && parts[2].length === 4) {
             return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
-        return str.split(' ')[0];
+        return dateOnly;
     }
 
     function gantiMode(mode) {
@@ -293,7 +298,7 @@
         });
     }
 
-    // --- LOGIKA SUPPLIES (FILTER KALENDER & MAKS 31 HARI) ---
+    // --- LOGIKA SUPPLIES (KALENDER & VALIDASI MAKS 31 HARI) ---
     function terapkanFilterSupplies() {
         let awal = document.getElementById('tglAwalSupplies').value;
         let akhir = document.getElementById('tglAkhirSupplies').value;
@@ -436,7 +441,7 @@
         document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
     }
 
-    // --- LOGIKA SALES (FILTER KALENDER & MAKS 31 HARI) ---
+    // --- LOGIKA SALES (KALENDER & VALIDASI MAKS 31 HARI) ---
     function terapkanFilterSales() {
         let awal = document.getElementById('tglAwalSales').value;
         let akhir = document.getElementById('tglAkhirSales').value;
