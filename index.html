@@ -194,7 +194,6 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
     // =======================================================
 
-    // DAFTAR ITEM SUPPLIES KHUSUS YANG DITAMPILKAN (SESUAI SS)
     const targetSuppliesItems = [
         'Plastik Sampah (Pcs)',
         'Sarung Tangan Plastik (Pack)',
@@ -213,6 +212,21 @@
     
     let chartTotal = null;
     let chartProduk = null;
+
+    // --- HELPER FORMAT & PARSE TANGGAL UNTUK SEMUA DATA HISTORIS ---
+    function parseDateString(raw) {
+        if(!raw) return '';
+        let str = raw.toString().trim();
+        if(str.includes('T')) str = str.split('T')[0];
+        let parts = str.split(' ');
+        let datePart = parts[0];
+        
+        // Memastikan format YYYY-MM-DD / DD-MM-YYYY / 01 Oct 26 tetap utuh sebagai teks
+        if (parts.length >= 3 && isNaN(parts[1])) {
+            return `${parts[0]} ${parts[1]} ${parts[2]}`;
+        }
+        return datePart;
+    }
 
     function gantiMode(mode) {
         document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
@@ -269,8 +283,7 @@
     function populateFilterSupplies(data) {
         let setTgl = new Set();
         data.forEach(row => {
-            let rawTgl = row[2] ? row[2].toString().trim() : ''; // Kolom C = Tanggal (Approved At)
-            let tgl = rawTgl ? rawTgl.split(' ')[0] : '';
+            let tgl = parseDateString(row[2]);
             if(tgl) setTgl.add(tgl);
         });
         datesSuppliesAvailable = Array.from(setTgl).sort();
@@ -307,8 +320,7 @@
         let selectedDates = datesSuppliesAvailable.slice(idxAwal, idxAkhir + 1);
 
         filteredSuppliesData = rawSuppliesData.filter(row => {
-            let rawTgl = row[2] ? row[2].toString().trim() : '';
-            let tgl = rawTgl ? rawTgl.split(' ')[0] : '';
+            let tgl = parseDateString(row[2]);
             return selectedDates.includes(tgl);
         });
 
@@ -324,12 +336,13 @@
 
     function isTargetItem(item) {
         if(!item) return false;
-        let cleanItem = item.trim().toLowerCase();
+        let cleanItem = item.toString().trim().toLowerCase();
         return targetSuppliesItems.some(t => cleanItem.includes(t.toLowerCase().split('(')[0].trim()));
     }
 
     function getNormalizedItemName(item) {
-        let cleanItem = item.trim().toLowerCase();
+        if(!item) return '';
+        let cleanItem = item.toString().trim().toLowerCase();
         for(let target of targetSuppliesItems) {
             let key = target.toLowerCase().split('(')[0].trim();
             if(cleanItem.includes(key)) return target;
@@ -344,8 +357,7 @@
         data.forEach(row => {
             let nama = row[0];
             let item = row[1];
-            let rawTgl = row[2] ? row[2].toString().trim() : '';
-            let tgl = rawTgl ? rawTgl.split(' ')[0] : '';
+            let tgl = parseDateString(row[2]);
             let qty = parseInt(row[3]) || 0;
 
             if(!tgl || !item || !isTargetItem(item)) return;
@@ -361,7 +373,6 @@
 
         let arrTgl = Array.from(setTanggal).sort();
 
-        // Output 1: Render Tabel Pivot Harian Supplies (Hanya 7 Item SS)
         let html = '<table><thead><tr><th class="text-left">Tanggal</th>';
         targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
         html += '</tr></thead><tbody>';
@@ -378,7 +389,6 @@
         html += '</tbody></table>';
         document.getElementById('containerTblSuppliesHarian').innerHTML = html;
 
-        // Populate Dropdown Jagoan
         let selJagoan = document.getElementById('selectJagoanSupplies');
         let currentSelected = selJagoan.value;
         selJagoan.innerHTML = '<option value="">-- Semua Jagoan --</option>';
@@ -430,8 +440,7 @@
     function populateFilterSales(data) {
         let setTgl = new Set();
         data.forEach(row => {
-            let rawTgl = row[2] ? row[2].toString().trim() : '';
-            let tgl = rawTgl.split(' ')[0];
+            let tgl = parseDateString(row[2]);
             if(tgl) setTgl.add(tgl);
         });
         datesSalesAvailable = Array.from(setTgl).sort();
@@ -462,8 +471,7 @@
         let selectedDates = datesSalesAvailable.slice(idxAwal, idxAkhir + 1);
 
         let filteredData = rawSalesData.filter(row => {
-            let rawTgl = row[2] ? row[2].toString().trim() : '';
-            let tgl = rawTgl.split(' ')[0];
+            let tgl = parseDateString(row[2]);
             return selectedDates.includes(tgl);
         });
 
@@ -483,8 +491,7 @@
 
         data.forEach(row => {
             let nama = row[0];
-            let rawTgl = row[2] ? row[2].toString().trim() : '';
-            let tgl = rawTgl.split(' ')[0];
+            let tgl = parseDateString(row[2]);
             
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
@@ -617,33 +624,43 @@
         let uploadType = document.querySelector('input[name="uploadType"]:checked').value;
 
         Papa.parse(file, {
-            header: true, skipEmptyLines: true,
+            header: true, 
+            skipEmptyLines: true,
             transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
             complete: function(results) {
                 parsedDataUpload = [];
                 results.data.forEach(row => {
+                    const getVal = (possibleKeys) => {
+                        for(let k of Object.keys(row)) {
+                            let cleanK = k.trim().toLowerCase();
+                            for(let p of possibleKeys) {
+                                if(cleanK === p.toLowerCase()) return row[k];
+                            }
+                        }
+                        return '';
+                    };
+
                     if (uploadType === "sales") {
-                        let id = row['Jagoan ID'] || row['Jagoan Id'] || row['jagoan id'];
+                        let id = getVal(['Jagoan ID', 'Jagoan Id', 'jagoan id']);
                         if(id) {
-                            let nama = row['Name'] || '';
-                            let rawApprove = row['Approved At'] ? row['Approved At'].trim() : '';
-                            let tanggal = rawApprove ? rawApprove.split(' ')[0] : '';
-                            let item = row['Item Name'] || '';
-                            let sold = parseInt(row['Sold']) || 0;
-                            let exp = parseInt(row['Expired']) || 0;
-                            let left = parseInt(row['Leftover']) || 0;
+                            let nama = getVal(['Name', 'Nama']);
+                            let rawApprove = getVal(['Approved At', 'Approved_At']);
+                            let tanggal = parseDateString(rawApprove);
+                            let item = getVal(['Item Name', 'Item']);
+                            let sold = parseInt(getVal(['Sold'])) || 0;
+                            let exp = parseInt(getVal(['Expired'])) || 0;
+                            let left = parseInt(getVal(['Leftover'])) || 0;
                             parsedDataUpload.push([nama, id, tanggal, item, sold, exp+left, exp, left]);
                         }
                     } else if (uploadType === "supplies") {
-                        let nama = row['Name'] || '';
-                        let item = row['Item'] || row['Item Name'] || '';
-                        let id = row['Jagoan ID'] || row['Jagoan Id'] || '';
+                        let nama = getVal(['Name', 'Nama']);
+                        let item = getVal(['Item', 'Item Name']);
+                        let id = getVal(['Jagoan ID', 'Jagoan Id']);
+                        let rawApprove = getVal(['Approved At', 'Approved_At', 'Requested At']);
+                        let tanggal = parseDateString(rawApprove);
                         
-                        let rawApprove = row['Approved At'] ? row['Approved At'].trim() : '';
-                        let tanggal = rawApprove ? rawApprove.split(' ')[0] : '';
-                        
-                        // AMBIL DARI APPROVED QUANTITY / APPROVED QUANT (KOLOM J)
-                        let appQty = parseInt(row['Approved Quant']) || parseInt(row['Approved Quantity']) || 0;
+                        let rawQty = getVal(['Approved Quant', 'Approved Quantity', 'Approved_Quant', 'Requested Quan']);
+                        let appQty = parseInt(rawQty) || 0;
                         
                         if(item && isTargetItem(item)) {
                             parsedDataUpload.push([nama, item, tanggal, appQty, id]);
