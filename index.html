@@ -194,6 +194,17 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
     // =======================================================
 
+    // DAFTAR ITEM SUPPLIES KHUSUS YANG DITAMPILKAN (SESUAI SS)
+    const targetSuppliesItems = [
+        'Plastik Sampah (Pcs)',
+        'Sarung Tangan Plastik (Pack)',
+        'Plastik Take Away M (Pack)',
+        'Plastik Take Away L (Pack)',
+        'Plastik Klip M (Pack)',
+        'Tissue Kotak Napkin (Pack)',
+        'Tutup Gelas Plastik (Pcs)'
+    ];
+
     let rawSalesData = [];
     let rawSuppliesData = [];
     let datesSalesAvailable = [];
@@ -311,38 +322,53 @@
         prosesDanTampilkanSupplies(rawSuppliesData);
     }
 
+    function isTargetItem(item) {
+        if(!item) return false;
+        let cleanItem = item.trim().toLowerCase();
+        return targetSuppliesItems.some(t => cleanItem.includes(t.toLowerCase().split('(')[0].trim()));
+    }
+
+    function getNormalizedItemName(item) {
+        let cleanItem = item.trim().toLowerCase();
+        for(let target of targetSuppliesItems) {
+            let key = target.toLowerCase().split('(')[0].trim();
+            if(cleanItem.includes(key)) return target;
+        }
+        return item;
+    }
+
     function prosesDanTampilkanSupplies(data) {
         let matrixSupplies = {};
-        let setTanggal = new Set(), setItem = new Set(), setJagoan = new Set();
+        let setTanggal = new Set(), setJagoan = new Set();
 
         data.forEach(row => {
             let nama = row[0];
+            let item = row[1];
             let rawTgl = row[2] ? row[2].toString().trim() : '';
             let tgl = rawTgl ? rawTgl.split(' ')[0] : '';
-            let item = row[1]; // Item
-            let qty = parseInt(row[3]) || 0; // Approved Quantity
+            let qty = parseInt(row[3]) || 0;
 
-            if(!tgl || !item) return;
+            if(!tgl || !item || !isTargetItem(item)) return;
+
+            let normItem = getNormalizedItemName(item);
 
             setTanggal.add(tgl);
-            setItem.add(item);
             if(nama) setJagoan.add(nama);
 
             if(!matrixSupplies[tgl]) matrixSupplies[tgl] = {};
-            matrixSupplies[tgl][item] = (matrixSupplies[tgl][item] || 0) + qty;
+            matrixSupplies[tgl][normItem] = (matrixSupplies[tgl][normItem] || 0) + qty;
         });
 
         let arrTgl = Array.from(setTanggal).sort();
-        let arrItem = Array.from(setItem).sort();
 
-        // 1. Output 1: Render Tabel Pivot Harian Supplies (Baris = Tanggal, Kolom = Item)
+        // Output 1: Render Tabel Pivot Harian Supplies (Hanya 7 Item SS)
         let html = '<table><thead><tr><th class="text-left">Tanggal</th>';
-        arrItem.forEach(it => { html += `<th>${it}</th>`; });
+        targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
         html += '</tr></thead><tbody>';
 
         arrTgl.forEach(tgl => {
             html += `<tr><td class="text-left">${tgl}</td>`;
-            arrItem.forEach(it => {
+            targetSuppliesItems.forEach(it => {
                 let val = matrixSupplies[tgl] && matrixSupplies[tgl][it] ? matrixSupplies[tgl][it] : 0;
                 html += `<td>${val}</td>`;
             });
@@ -361,7 +387,6 @@
         });
         selJagoan.value = currentSelected;
 
-        // 2. Output 2: Render Rekap Jagoan
         renderRekapJagoanSupplies();
     }
 
@@ -374,11 +399,13 @@
             let item = row[1];
             let qty = parseInt(row[3]) || 0;
 
-            if(!item) return;
+            if(!item || !isTargetItem(item)) return;
             if(jagoanSelected && nama !== jagoanSelected) return;
 
+            let normItem = getNormalizedItemName(item);
+
             if(!rekap[nama]) rekap[nama] = {};
-            rekap[nama][item] = (rekap[nama][item] || 0) + qty;
+            rekap[nama][normItem] = (rekap[nama][normItem] || 0) + qty;
         });
 
         let html = '<table><thead><tr><th class="text-left">Nama Jagoan</th><th class="text-left">Nama Item</th><th>Total Quantity Checkout</th></tr></thead><tbody>';
@@ -392,7 +419,7 @@
         }
 
         if(!hasData) {
-            html += '<tr><td colspan="3" style="color:#7f8c8d;">Tidak ada data checkout untuk periode/jagoan ini</td></tr>';
+            html += '<tr><td colspan="3" style="color:#7f8c8d;">Tidak ada data checkout supplies untuk periode/jagoan ini</td></tr>';
         }
 
         html += '</tbody></table>';
@@ -609,14 +636,16 @@
                         }
                     } else if (uploadType === "supplies") {
                         let nama = row['Name'] || '';
-                        let id = row['Jagoan ID'] || row['Jagoan Id'] || '';
                         let item = row['Item'] || row['Item Name'] || '';
+                        let id = row['Jagoan ID'] || row['Jagoan Id'] || '';
                         
                         let rawApprove = row['Approved At'] ? row['Approved At'].trim() : '';
                         let tanggal = rawApprove ? rawApprove.split(' ')[0] : '';
-                        let appQty = parseInt(row['Approved Quant']) || 0;
                         
-                        if(item) {
+                        // AMBIL DARI APPROVED QUANTITY / APPROVED QUANT (KOLOM J)
+                        let appQty = parseInt(row['Approved Quant']) || parseInt(row['Approved Quantity']) || 0;
+                        
+                        if(item && isTargetItem(item)) {
                             parsedDataUpload.push([nama, item, tanggal, appQty, id]);
                         }
                     }
