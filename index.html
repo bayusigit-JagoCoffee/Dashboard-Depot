@@ -23,12 +23,12 @@
         .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
         
-        /* Filter Box */
+        /* Filter Box dengan Input Tanggal Kalender */
         .filter-box { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .filter-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
-        .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; }
-        .btn-filter { padding: 8px 16px; background-color: #2c3e50; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .btn-reset { padding: 8px 16px; background-color: #7f8c8d; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .filter-group input[type="date"], .filter-group select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; }
+        .btn-filter { padding: 9px 18px; background-color: #2c3e50; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-reset { padding: 9px 18px; background-color: #7f8c8d; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
         /* Pesan Status */
         .pesan { margin-top: 15px; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 5px; display: none; text-align: center; }
@@ -89,11 +89,11 @@
     <div class="filter-box">
         <div class="filter-group">
             <label for="tglAwalSales">Dari Tanggal:</label>
-            <select id="tglAwalSales"><option value="">-- Semua --</option></select>
+            <input type="date" id="tglAwalSales" />
         </div>
         <div class="filter-group">
             <label for="tglAkhirSales">Sampai Tanggal:</label>
-            <select id="tglAkhirSales"><option value="">-- Semua --</option></select>
+            <input type="date" id="tglAkhirSales" />
         </div>
         <button class="btn-filter" onclick="terapkanFilterSales()">Terapkan Filter</button>
         <button class="btn-reset" onclick="resetFilterSales()">Reset All</button>
@@ -154,11 +154,11 @@
     <div class="filter-box">
         <div class="filter-group">
             <label for="tglAwalSupplies">Dari Tanggal:</label>
-            <select id="tglAwalSupplies"><option value="">-- Semua --</option></select>
+            <input type="date" id="tglAwalSupplies" />
         </div>
         <div class="filter-group">
             <label for="tglAkhirSupplies">Sampai Tanggal:</label>
-            <select id="tglAkhirSupplies"><option value="">-- Semua --</option></select>
+            <input type="date" id="tglAkhirSupplies" />
         </div>
         <button class="btn-filter" onclick="terapkanFilterSupplies()">Terapkan Filter</button>
         <button class="btn-reset" onclick="resetFilterSupplies()">Reset All</button>
@@ -204,28 +204,44 @@
         'Tutup Gelas Plastik (Pcs)'
     ];
 
+    const monthMap = {
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
+        'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+    };
+
     let rawSalesData = [];
     let rawSuppliesData = [];
-    let datesSalesAvailable = [];
-    let datesSuppliesAvailable = [];
     let filteredSuppliesData = [];
     
     let chartTotal = null;
     let chartProduk = null;
 
-    // --- HELPER FORMAT & PARSE TANGGAL UNTUK SEMUA DATA HISTORIS ---
-    function parseDateString(raw) {
+    // --- PARSER TANGGAL PRESISI KE FORMAT YYYY-MM-DD ---
+    function normalizeToISO(raw) {
         if(!raw) return '';
         let str = raw.toString().trim();
         if(str.includes('T')) str = str.split('T')[0];
-        let parts = str.split(' ');
-        let datePart = parts[0];
-        
-        // Memastikan format YYYY-MM-DD / DD-MM-YYYY / 01 Oct 26 tetap utuh sebagai teks
-        if (parts.length >= 3 && isNaN(parts[1])) {
-            return `${parts[0]} ${parts[1]} ${parts[2]}`;
+        let parts = str.split(' ')[0].split(/[-/]/);
+
+        // Format "01 Oct 26" / "01 Oct 2026"
+        let spaceParts = str.split(' ');
+        if(spaceParts.length >= 3 && isNaN(spaceParts[1])) {
+            let day = spaceParts[0].padStart(2, '0');
+            let monStr = spaceParts[1].substring(0, 3).toLowerCase();
+            let month = monthMap[monStr] || '01';
+            let year = spaceParts[2].length === 2 ? '20' + spaceParts[2] : spaceParts[2];
+            return `${year}-${month}-${day}`;
         }
-        return datePart;
+
+        // Format "YYYY-MM-DD"
+        if(parts[0].length === 4) {
+            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        }
+        // Format "DD-MM-YYYY" / "DD/MM/YYYY"
+        if(parts.length === 3 && parts[2].length === 4) {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        return str.split(' ')[0];
     }
 
     function gantiMode(mode) {
@@ -269,59 +285,43 @@
                 rawSalesData = data.dataSales || [];
                 rawSuppliesData = data.dataSupplies || [];
 
-                populateFilterSales(rawSalesData);
                 prosesDanTampilkanSales(rawSalesData);
 
-                populateFilterSupplies(rawSuppliesData);
                 filteredSuppliesData = rawSuppliesData;
                 prosesDanTampilkanSupplies(rawSuppliesData);
             }
         });
     }
 
-    // --- LOGIKA PIPELINE SUPPLIES ---
-    function populateFilterSupplies(data) {
-        let setTgl = new Set();
-        data.forEach(row => {
-            let tgl = parseDateString(row[2]);
-            if(tgl) setTgl.add(tgl);
-        });
-        datesSuppliesAvailable = Array.from(setTgl).sort();
-
-        let selAwal = document.getElementById('tglAwalSupplies');
-        let selAkhir = document.getElementById('tglAkhirSupplies');
-        selAwal.innerHTML = '<option value="">-- Awal --</option>';
-        selAkhir.innerHTML = '<option value="">-- Akhir --</option>';
-
-        datesSuppliesAvailable.forEach(tgl => {
-            selAwal.innerHTML += `<option value="${tgl}">${tgl}</option>`;
-            selAkhir.innerHTML += `<option value="${tgl}">${tgl}</option>`;
-        });
-    }
-
+    // --- LOGIKA SUPPLIES (FILTER KALENDER & MAKS 31 HARI) ---
     function terapkanFilterSupplies() {
         let awal = document.getElementById('tglAwalSupplies').value;
         let akhir = document.getElementById('tglAkhirSupplies').value;
 
-        if(!awal && !akhir) {
-            filteredSuppliesData = rawSuppliesData;
-            prosesDanTampilkanSupplies(rawSuppliesData);
+        if(!awal || !akhir) {
+            alert("Silakan pilih Tanggal Awal dan Tanggal Akhir terlebih dahulu.");
             return;
         }
 
-        let idxAwal = awal ? datesSuppliesAvailable.indexOf(awal) : 0;
-        let idxAkhir = akhir ? datesSuppliesAvailable.indexOf(akhir) : datesSuppliesAvailable.length - 1;
+        let d1 = new Date(awal);
+        let d2 = new Date(akhir);
 
-        if(idxAwal > idxAkhir) {
+        if(d1 > d2) {
             alert("Tanggal Awal tidak boleh lebih besar dari Tanggal Akhir!");
             return;
         }
 
-        let selectedDates = datesSuppliesAvailable.slice(idxAwal, idxAkhir + 1);
+        let diffTime = Math.abs(d2 - d1);
+        let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        if(diffDays > 31) {
+            alert(`Maksimal rentang tanggal yang dipilih adalah 31 hari! (Saat ini: ${diffDays} hari)`);
+            return;
+        }
 
         filteredSuppliesData = rawSuppliesData.filter(row => {
-            let tgl = parseDateString(row[2]);
-            return selectedDates.includes(tgl);
+            let tgl = normalizeToISO(row[2]);
+            return tgl >= awal && tgl <= akhir;
         });
 
         prosesDanTampilkanSupplies(filteredSuppliesData);
@@ -357,7 +357,7 @@
         data.forEach(row => {
             let nama = row[0];
             let item = row[1];
-            let tgl = parseDateString(row[2]);
+            let tgl = normalizeToISO(row[2]);
             let qty = parseInt(row[3]) || 0;
 
             if(!tgl || !item || !isTargetItem(item)) return;
@@ -436,43 +436,35 @@
         document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
     }
 
-    // --- LOGIKA PIPELINE PENJUALAN & WASTE ---
-    function populateFilterSales(data) {
-        let setTgl = new Set();
-        data.forEach(row => {
-            let tgl = parseDateString(row[2]);
-            if(tgl) setTgl.add(tgl);
-        });
-        datesSalesAvailable = Array.from(setTgl).sort();
-
-        let selAwal = document.getElementById('tglAwalSales');
-        let selAkhir = document.getElementById('tglAkhirSales');
-        selAwal.innerHTML = '<option value="">-- Awal --</option>';
-        selAkhir.innerHTML = '<option value="">-- Akhir --</option>';
-
-        datesSalesAvailable.forEach(tgl => {
-            selAwal.innerHTML += `<option value="${tgl}">${tgl}</option>`;
-            selAkhir.innerHTML += `<option value="${tgl}">${tgl}</option>`;
-        });
-    }
-
+    // --- LOGIKA SALES (FILTER KALENDER & MAKS 31 HARI) ---
     function terapkanFilterSales() {
         let awal = document.getElementById('tglAwalSales').value;
         let akhir = document.getElementById('tglAkhirSales').value;
 
-        if(!awal && !akhir) {
-            prosesDanTampilkanSales(rawSalesData);
+        if(!awal || !akhir) {
+            alert("Silakan pilih Tanggal Awal dan Tanggal Akhir terlebih dahulu.");
             return;
         }
 
-        let idxAwal = awal ? datesSalesAvailable.indexOf(awal) : 0;
-        let idxAkhir = akhir ? datesSalesAvailable.indexOf(akhir) : datesSalesAvailable.length - 1;
+        let d1 = new Date(awal);
+        let d2 = new Date(akhir);
 
-        let selectedDates = datesSalesAvailable.slice(idxAwal, idxAkhir + 1);
+        if(d1 > d2) {
+            alert("Tanggal Awal tidak boleh lebih besar dari Tanggal Akhir!");
+            return;
+        }
+
+        let diffTime = Math.abs(d2 - d1);
+        let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        if(diffDays > 31) {
+            alert(`Maksimal rentang tanggal yang dipilih adalah 31 hari! (Saat ini: ${diffDays} hari)`);
+            return;
+        }
 
         let filteredData = rawSalesData.filter(row => {
-            let tgl = parseDateString(row[2]);
-            return selectedDates.includes(tgl);
+            let tgl = normalizeToISO(row[2]);
+            return tgl >= awal && tgl <= akhir;
         });
 
         prosesDanTampilkanSales(filteredData);
@@ -491,7 +483,7 @@
 
         data.forEach(row => {
             let nama = row[0];
-            let tgl = parseDateString(row[2]);
+            let tgl = normalizeToISO(row[2]);
             
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
@@ -645,7 +637,7 @@
                         if(id) {
                             let nama = getVal(['Name', 'Nama']);
                             let rawApprove = getVal(['Approved At', 'Approved_At']);
-                            let tanggal = parseDateString(rawApprove);
+                            let tanggal = normalizeToISO(rawApprove);
                             let item = getVal(['Item Name', 'Item']);
                             let sold = parseInt(getVal(['Sold'])) || 0;
                             let exp = parseInt(getVal(['Expired'])) || 0;
@@ -657,7 +649,7 @@
                         let item = getVal(['Item', 'Item Name']);
                         let id = getVal(['Jagoan ID', 'Jagoan Id']);
                         let rawApprove = getVal(['Approved At', 'Approved_At', 'Requested At']);
-                        let tanggal = parseDateString(rawApprove);
+                        let tanggal = normalizeToISO(rawApprove);
                         
                         let rawQty = getVal(['Approved Quant', 'Approved Quantity', 'Approved_Quant', 'Requested Quan']);
                         let appQty = parseInt(rawQty) || 0;
