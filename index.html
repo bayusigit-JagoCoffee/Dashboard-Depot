@@ -43,15 +43,18 @@
         .tab-content { display: none; padding-top: 20px; }
         .tab-content.active { display: block; }
 
-        /* Style Tabel & Grid */
+        /* Style Tabel & Grid Ringkas Tanpa Slide */
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .table-wrapper { width: 100%; overflow-x: auto; border: 1px solid #bdc3c7; border-radius: 8px; margin-top: 10px; }
-        table { border-collapse: collapse; width: 100%; font-size: 13px; white-space: nowrap; }
-        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: center; }
-        th { background-color: #34495e; color: white; }
+        table { border-collapse: collapse; width: 100%; font-size: 12px; table-layout: fixed; }
+        th, td { border: 1px solid #bdc3c7; padding: 6px 4px; text-align: center; word-wrap: break-word; }
+        th { background-color: #34495e; color: white; font-size: 11px; vertical-align: middle; white-space: normal; line-height: 1.2; }
         td.text-left { text-align: left; font-weight: bold; }
-        .badge-rank { display: inline-block; width: 22px; height: 22px; line-height: 22px; border-radius: 50%; background: #3498db; color: white; font-weight: bold; font-size: 11px; }
+        .badge-rank { display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: #3498db; color: white; font-weight: bold; font-size: 10px; }
         tr.row-total { background-color: #eaeded; font-weight: bold; }
+
+        /* Khusus Lebar Kolom Tabel Supplies */
+        .tbl-supplies th:first-child, .tbl-supplies td:first-child { width: 18%; }
 
         .chart-box { position: relative; height: 320px; width: 100%; margin-bottom: 25px; }
         .radio-upload { display: flex; gap: 20px; justify-content: center; margin-bottom: 15px; font-weight: bold; }
@@ -109,22 +112,22 @@
         <div class="grid-2">
             <div>
                 <h3>1. Ranking Penjualan (Jagoan)</h3>
-                <div class="table-wrapper"><table id="tblRankSales"><thead><tr><th>Rank</th><th class="text-left">Nama Jagoan</th><th>Total Terjual</th></tr></thead><tbody></tbody></table></div>
+                <div class="table-wrapper"><table id="tblRankSales"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Terjual</th></tr></thead><tbody></tbody></table></div>
             </div>
             <div>
                 <h3>2. Ranking Leftover (Jagoan)</h3>
-                <div class="table-wrapper"><table id="tblRankLeftover"><thead><tr><th>Rank</th><th class="text-left">Nama Jagoan</th><th>Total Leftover</th></tr></thead><tbody></tbody></table></div>
+                <div class="table-wrapper"><table id="tblRankLeftover"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Leftover</th></tr></thead><tbody></tbody></table></div>
             </div>
         </div>
         <br>
         <div class="grid-2">
             <div>
                 <h3>3. Ranking Waste (Jagoan)</h3>
-                <div class="table-wrapper"><table id="tblRankWasteJagoan"><thead><tr><th>Rank</th><th class="text-left">Nama Jagoan</th><th>Total Waste</th></tr></thead><tbody></tbody></table></div>
+                <div class="table-wrapper"><table id="tblRankWasteJagoan"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Waste</th></tr></thead><tbody></tbody></table></div>
             </div>
             <div>
                 <h3>4. Ranking Waste (Produk)</h3>
-                <div class="table-wrapper"><table id="tblRankWasteProduk"><thead><tr><th>Rank</th><th class="text-left">Nama Produk</th><th>Total Waste</th></tr></thead><tbody></tbody></table></div>
+                <div class="table-wrapper"><table id="tblRankWasteProduk"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Produk</th><th style="width:25%">Total Waste</th></tr></thead><tbody></tbody></table></div>
             </div>
         </div>
     </div>
@@ -175,7 +178,7 @@
         <div class="table-wrapper" id="containerTblSuppliesHarian"></div>
     </div>
 
-    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN (FORMAT PIVOT + SEARCHABLE INPUT) -->
+    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN -->
     <div id="tabSuppliesJagoan" class="tab-content-supplies" style="display:none; padding-top:20px;">
         <div class="filter-box" style="background-color: #f8fafc;">
             <div class="filter-group">
@@ -375,7 +378,7 @@
         let arrTgl = Array.from(setTanggal).sort();
 
         // 1. Render Tabel Pivot Harian Supplies
-        let html = '<table><thead><tr><th class="text-left">Tanggal</th>';
+        let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Tanggal</th>';
         targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
         html += '</tr></thead><tbody>';
 
@@ -406,7 +409,7 @@
         renderRekapJagoanSupplies();
     }
 
-    // --- RENDER REKAP JAGOAN DENGAN TAMPILAN MATRIX PIVOT (MIRIP TABEL HARIAN) ---
+    // --- RENDER REKAP JAGOAN DENGAN TAMPILAN MATRIX PIVOT RINGKAS ---
     function renderRekapJagoanSupplies() {
         let queryNama = document.getElementById('searchJagoanSupplies').value.trim().toLowerCase();
         let matrixJagoan = {};
@@ -419,7 +422,6 @@
 
             if(!nama || !item || !isTargetItem(item)) return;
 
-            // Saring pencarian berdasarkan nama jagoan yang diketik
             if(queryNama && !nama.toLowerCase().includes(queryNama)) return;
 
             let normItem = getNormalizedItemName(item);
@@ -432,7 +434,7 @@
 
         let arrJagoan = Array.from(setJagoanFound).sort();
 
-        let html = '<table><thead><tr><th class="text-left">Nama Jagoan</th>';
+        let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Nama Jagoan</th>';
         targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
         html += '<th>Total</th></tr></thead><tbody>';
 
@@ -456,7 +458,6 @@
                 html += `<td><b>${totalRow}</b></td></tr>`;
             });
 
-            // Baris Total Keseluruhan Jagoan
             html += '<tr class="row-total"><td class="text-left">Total</td>';
             targetSuppliesItems.forEach(it => {
                 html += `<td>${totalPerItem[it]}</td>`;
@@ -468,7 +469,7 @@
         document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
     }
 
-    // --- LOGIKA SALES (KALENDER & MAKS 31 HARI) ---
+    // --- LOGIKA SALES ---
     function terapkanFilterSales() {
         let awal = document.getElementById('tglAwalSales').value;
         let akhir = document.getElementById('tglAkhirSales').value;
