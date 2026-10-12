@@ -6,6 +6,8 @@
     <title>Dashboard Operational, Supplies & Perencanaan Produksi Jago</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Library html2pdf untuk ekspor ke PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
         .container { background-color: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 1150px; margin: 0 auto 20px auto; }
@@ -20,6 +22,7 @@
         .btn-blue { padding: 10px 20px; background-color: #3498db; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; display: inline-block;}
         .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .btn-red { padding: 9px 18px; background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         
         .filter-box { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .filter-group { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
@@ -98,53 +101,56 @@
         </div>
         <button class="btn-filter" onclick="terapkanFilterSales()">Terapkan Filter</button>
         <button class="btn-reset" onclick="resetFilterSales()">Reset All</button>
+        <button class="btn-red" onclick="downloadPDFSales()">📄 Download Rekapan (PDF)</button>
     </div>
 
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="bukaTab(event, 'tabRanking')">🏆 Ranking Jagoan & Produk</button>
-        <button class="tab-btn" onclick="bukaTab(event, 'tabPenjualanHarian')">📈 Tabel & Grafik Penjualan</button>
-        <button class="tab-btn" onclick="bukaTab(event, 'tabWasteHarian')">🗑️ Tabel Waste Harian</button>
-    </div>
+    <div id="exportableSalesArea">
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="bukaTab(event, 'tabRanking')">🏆 Ranking Jagoan & Produk</button>
+            <button class="tab-btn" onclick="bukaTab(event, 'tabPenjualanHarian')">📈 Tabel & Grafik Penjualan</button>
+            <button class="tab-btn" onclick="bukaTab(event, 'tabWasteHarian')">🗑️ Tabel Waste Harian</button>
+        </div>
 
-    <div id="tabRanking" class="tab-content active">
-        <div class="grid-2">
-            <div>
-                <h3>1. Ranking Penjualan (Jagoan)</h3>
-                <div class="table-wrapper"><table id="tblRankSales"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Terjual</th></tr></thead><tbody></tbody></table></div>
+        <div id="tabRanking" class="tab-content active">
+            <div class="grid-2">
+                <div>
+                    <h3>1. Ranking Penjualan (Jagoan)</h3>
+                    <div class="table-wrapper"><table id="tblRankSales"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Terjual</th></tr></thead><tbody></tbody></table></div>
+                </div>
+                <div>
+                    <h3>2. Ranking Leftover (Jagoan)</h3>
+                    <div class="table-wrapper"><table id="tblRankLeftover"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Leftover</th></tr></thead><tbody></tbody></table></div>
+                </div>
             </div>
-            <div>
-                <h3>2. Ranking Leftover (Jagoan)</h3>
-                <div class="table-wrapper"><table id="tblRankLeftover"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Leftover</th></tr></thead><tbody></tbody></table></div>
+            <br>
+            <div class="grid-2">
+                <div>
+                    <h3>3. Ranking Waste (Jagoan)</h3>
+                    <div class="table-wrapper"><table id="tblRankWasteJagoan"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Waste</th></tr></thead><tbody></tbody></table></div>
+                </div>
+                <div>
+                    <h3>4. Ranking Waste (Produk)</h3>
+                    <div class="table-wrapper"><table id="tblRankWasteProduk"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Produk</th><th style="width:25%">Total Waste</th></tr></thead><tbody></tbody></table></div>
+                </div>
             </div>
         </div>
-        <br>
-        <div class="grid-2">
-            <div>
-                <h3>3. Ranking Waste (Jagoan)</h3>
-                <div class="table-wrapper"><table id="tblRankWasteJagoan"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Jagoan</th><th style="width:25%">Total Waste</th></tr></thead><tbody></tbody></table></div>
-            </div>
-            <div>
-                <h3>4. Ranking Waste (Produk)</h3>
-                <div class="table-wrapper"><table id="tblRankWasteProduk"><thead><tr><th style="width:15%">Rank</th><th class="text-left">Nama Produk</th><th style="width:25%">Total Waste</th></tr></thead><tbody></tbody></table></div>
-            </div>
-        </div>
-    </div>
 
-    <div id="tabPenjualanHarian" class="tab-content">
-        <h3>5. Grafik Penjualan Total & Per Produk</h3>
-        <div class="chart-box"><canvas id="chartTotalSales"></canvas></div>
-        <div style="margin-top: 20px;">
-            <label for="selectProduk"><b>Pilih Produk: </b></label>
-            <select id="selectProduk" onchange="updateChartProduk()"></select>
-            <div class="chart-box"><canvas id="chartPerProduk"></canvas></div>
+        <div id="tabPenjualanHarian" class="tab-content">
+            <h3>5. Grafik Penjualan Total & Per Produk</h3>
+            <div class="chart-box"><canvas id="chartTotalSales"></canvas></div>
+            <div style="margin-top: 20px;">
+                <label for="selectProduk"><b>Pilih Produk: </b></label>
+                <select id="selectProduk" onchange="updateChartProduk()"></select>
+                <div class="chart-box"><canvas id="chartPerProduk"></canvas></div>
+            </div>
+            <h3>Tabel Penjualan Produk Harian</h3>
+            <div class="table-wrapper" id="containerTblSalesHarian"></div>
         </div>
-        <h3>Tabel Penjualan Produk Harian</h3>
-        <div class="table-wrapper" id="containerTblSalesHarian"></div>
-    </div>
 
-    <div id="tabWasteHarian" class="tab-content">
-        <h3>6. Tabel Waste Produk Setiap Hari</h3>
-        <div class="table-wrapper" id="containerTblWasteHarian"></div>
+        <div id="tabWasteHarian" class="tab-content">
+            <h3>6. Tabel Waste Produk Setiap Hari</h3>
+            <div class="table-wrapper" id="containerTblWasteHarian"></div>
+        </div>
     </div>
 </div>
 
@@ -361,6 +367,30 @@
                 filteredSuppliesData = rawSuppliesData;
                 prosesDanTampilkanSupplies(rawSuppliesData);
             }
+        });
+    }
+
+    function downloadPDFSales() {
+        let element = document.getElementById('exportableSalesArea');
+        let awal = document.getElementById('tglAwalSales').value || 'Awal';
+        let akhir = document.getElementById('tglAkhirSales').value || 'Akhir';
+        
+        let opt = {
+            margin:       0.3,
+            filename:     `Rekapan_Penjualan_Jago_${awal}_sd_${akhir}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        };
+
+        // Buat semua tab terlihat sementara saat di-export
+        let tabs = document.querySelectorAll('#exportableSalesArea .tab-content');
+        tabs.forEach(t => t.style.display = 'block');
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Kembalikan tampilan tab seperti semula
+            tabs.forEach(t => t.style.display = '');
+            document.querySelector('#exportableSalesArea .tab-content.active').style.display = 'block';
         });
     }
 
