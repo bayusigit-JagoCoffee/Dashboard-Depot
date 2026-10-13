@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Operational, Supplies & Perencanaan Produksi Jago</title>
+    <!-- Library Eksternal -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Modul Script Terpisah -->
+    <script src="pdf-exporter.js"></script>
+
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
         .container { background-color: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 1150px; margin: 0 auto 20px auto; }
@@ -22,6 +28,7 @@
         .btn-blue { padding: 10px 20px; background-color: #3498db; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; display: inline-block;}
         .btn-green { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-green:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .btn-red { padding: 9px 18px; background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         
         /* Filter Box */
         .filter-box { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
@@ -108,6 +115,7 @@
         </div>
         <button class="btn-filter" onclick="terapkanFilterSales()">Terapkan Filter</button>
         <button class="btn-reset" onclick="resetFilterSales()">Reset All</button>
+        <button class="btn-red" onclick="downloadPDFSales()">📄 Download Rekapan (PDF)</button>
     </div>
 
     <div class="nav-tabs">
