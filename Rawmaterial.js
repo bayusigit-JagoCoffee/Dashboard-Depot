@@ -1,5 +1,5 @@
 /**
- * Module Khusus Manajemen Stok Bahan Baku & Kalkulator Restock
+ * Module Khusus Manajemen Stok Bahan Baku & Auto-Import Stocklist Gudang
  */
 
 // Master Konversi Satuan Kemasan ke Gram/ML
@@ -84,12 +84,11 @@ const resepBahanBakuPerBatch = {
 // Variabel Penyimpan Stok Gudang
 let stokGudangUser = {};
 
-// Fungsi Hitung Kebutuhan Bahan Baku berdasarkan Rencana Produksi
+// Hitung Kebutuhan Bahan Baku berdasarkan Rencana Produksi
 function hitungKebutuhanBahanBaku() {
     let kebutuhanGram = {};
     Object.keys(masterBahanBaku).forEach(b => kebutuhanGram[b] = 0);
 
-    // Ambil data rekomendasi batch dari Production Planner
     masterProdukRules.forEach((p, index) => {
         let batchElem = document.getElementById(`rekBatch_${index}`);
         if (batchElem) {
@@ -121,16 +120,10 @@ function renderTabelBahanBaku(kebutuhanGram) {
         let meta = masterBahanBaku[bahan];
         let reqGr = kebutuhanGram[bahan] || 0;
         
-        // Konversi kebutuhan gram ke satuan kemasan
         let reqKemasan = (reqGr / meta.konversiGr).toFixed(2);
-        
-        // Input stok fisik gudang saat ini
         let stokCurrent = parseFloat(stokGudangUser[bahan]) || 0;
-
-        // Selisih Kebutuhan vs Stok
         let selisihKemasan = stokCurrent - reqKemasan;
         
-        // Tentukan Status Alert
         let statusBadge = '';
         if (stokCurrent < reqKemasan) {
             let kurang = (reqKemasan - stokCurrent).toFixed(2);
@@ -149,7 +142,7 @@ function renderTabelBahanBaku(kebutuhanGram) {
                 <td>${reqGr.toLocaleString('id-ID')} gr/ml</td>
                 <td><b style="color:#2980b9;">${reqKemasan} ${meta.satuan}</b></td>
                 <td>
-                    <input type="number" id="stokGudang_${no}" value="${stokCurrent}" min="0" step="0.1" style="width:70px; text-align:center; font-weight:bold;" oninput="updateStokGudangValue('${bahan}', this.value)" /> ${meta.satuan}
+                    <input type="number" id="stokGudang_${no}" value="${stokCurrent.toFixed(2)}" min="0" step="0.1" style="width:80px; text-align:center; font-weight:bold;" oninput="updateStokGudangValue('${bahan}', this.value)" /> ${meta.satuan}
                 </td>
                 <td>${statusBadge}</td>
             </tr>
@@ -160,5 +153,71 @@ function renderTabelBahanBaku(kebutuhanGram) {
 
 function updateStokGudangValue(bahan, val) {
     stokGudangUser[bahan] = parseFloat(val) || 0;
-    hitungKebutuhanBahanBaku(); // Refresh analisis alert status
+    hitungKebutuhanBahanBaku();
+}
+
+// Fungsi Parser & Import File Excel / CSV Stocklist Gudang
+function handleImportStocklist(file) {
+    if (!file) return;
+
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        let data = new Uint8Array(e.target.result);
+        let workbook = XLSX.read(data, { type: 'array' });
+        let firstSheetName = workbook.SheetNames[0];
+        let worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert sheet to json array of arrays
+        let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        let tempAggregat = {};
+        Object.keys(masterBahanBaku).forEach(b => tempAggregat[b] = 0);
+
+        // Abaikan baris 1-8 (index 0-7), baca mulai baris ke-9
+        for (let i = 8; i < rawJson.length; i++) {
+            let row = rawJson[i];
+            if (!row || row.length < 10) continue;
+
+            let prodName = row[2] ? row[2].toString().trim() : ''; // Kolom C
+            let stockQty = parseFloat(row[9]) || 0;                // Kolom J
+
+            if (!prodName || stockQty === 0) continue;
+
+            // Pencocokan ke Master Bahan Baku
+            for (let bahanMaster in masterBahanBaku) {
+                let cleanMasterName = bahanMaster.replace(/1000gr|5000gr|25000gr|1000ml|5000ml|500gr|Gr/gi, '').trim().toLowerCase();
+                let cleanProdName = prodName.toLowerCase();
+
+                // Cek pencocokan spesifik
+                let isMatch = false;
+                if (bahanMaster === 'Syrup Salted Caramel' && cleanProdName.includes('syrup salted caramel')) isMatch = true;
+                else if (bahanMaster === 'Syrup Vanilla' && cleanProdName.includes('syrup vanilla')) isMatch = true;
+                else if (bahanMaster === 'Susu UHT Diamond 1000ml' && cleanProdName.includes('susu uht diamond')) isMatch = true;
+                else if (bahanMaster === 'Aren Sugar' && (cleanProdName === 'aren sugar' || cleanProdName === 'aren sugar a2')) isMatch = true;
+                else if (!bahanMaster.includes('Syrup') && cleanProdName.includes(cleanMasterName)) isMatch = true;
+
+                if (isMatch) {
+                    if (bahanMaster === 'Syrup Salted Caramel') {
+                        // Stock Qty di Excel dlm ML -> konversi ke Jerigen (5000 ML)
+                        tempAggregat[bahanMaster] += (stockQty / 5000);
+                    } else if (bahanMaster === 'Syrup Vanilla') {
+                        // Stock Qty di Excel dlm ML -> konversi ke Box (6960 ML)
+                        tempAggregat[bahanMaster] += (stockQty / 6960);
+                    } else if (bahanMaster === 'Susu UHT Diamond 1000ml') {
+                        // Stock Qty di Excel dlm Pcs -> konversi ke Box (12 Pcs)
+                        tempAggregat[bahanMaster] += (stockQty / 12);
+                    } else {
+                        tempAggregat[bahanMaster] += stockQty;
+                    }
+                    break;
+                }
+            }
+        }
+
+        stokGudangUser = tempAggregat;
+        hitungKebutuhanBahanBaku();
+        alert("Berhasil mengimpor dan mengonversi Stocklist Gudang!");
+    };
+
+    reader.readAsArrayBuffer(file);
 }
