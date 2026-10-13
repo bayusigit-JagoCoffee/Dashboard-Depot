@@ -158,35 +158,37 @@ function updateStokGudangValue(bahan, val) {
     hitungKebutuhanBahanBaku();
 }
 
-// Parser & Import Excel Stocklist Gudang
+// Parser & Import Excel Stocklist Gudang dengan Binary Reader
 function handleImportStocklist(file) {
     if (!file) return;
 
-    // Pastikan library XLSX sudah terisi
     if (typeof XLSX === 'undefined') {
-        alert("Library Excel belum siap, silakan refresh halaman web kamu.");
+        alert("Library Excel (SheetJS) belum terisi. Silakan pastikan koneksi internet stabil lalu refresh.");
         return;
     }
 
     let reader = new FileReader();
+    reader.readAsBinaryString(file);
+
     reader.onload = function(e) {
         try {
-            let data = new Uint8Array(e.target.result);
-            let workbook = XLSX.read(data, { type: 'array' });
+            let binaryData = e.target.result;
+            let workbook = XLSX.read(binaryData, { type: 'binary' });
             let firstSheetName = workbook.SheetNames[0];
             let worksheet = workbook.Sheets[firstSheetName];
             
+            // Konversi sheet ke array of arrays
             let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             
             let tempAggregat = {};
             Object.keys(masterBahanBaku).forEach(b => tempAggregat[b] = 0);
 
-            // Pindai baris Excel mulai dari baris ke-9 (index 8)
+            // Scan seluruh baris data Excel (mulai dari baris ke-9 / index 8)
             for (let i = 8; i < rawJson.length; i++) {
                 let row = rawJson[i];
                 if (!row || row.length < 3) continue;
 
-                // Kolom C (index 2) = Product Name, Kolom J (index 9) = Stock Qty
+                // Kolom C (Index 2) = Product Name, Kolom J (Index 9) = Stock Qty
                 let prodName = row[2] ? row[2].toString().trim() : '';
                 let stockQty = parseFloat(row[9]) || 0;
 
@@ -199,7 +201,7 @@ function handleImportStocklist(file) {
 
                     if (bahanMaster === 'Arabica Coffee Beans 1000gr' && cleanProdName.includes('arabica coffee beans')) isMatch = true;
                     else if (bahanMaster === 'Robusta Coffee Beans 1000gr' && cleanProdName.includes('robusta coffee beans')) isMatch = true;
-                    else if (bahanMaster === 'Aren Sugar' && cleanProdName.includes('aren sugar')) isMatch = true;
+                    else if (bahanMaster === 'Aren Sugar' && (cleanProdName === 'aren sugar' || cleanProdName === 'aren sugar a2')) isMatch = true;
                     else if (bahanMaster === 'Brown Sugar 5000 Gr' && cleanProdName.includes('brown sugar')) isMatch = true;
                     else if (bahanMaster === 'Choco Powder' && cleanProdName.includes('choco powder')) isMatch = true;
                     else if (bahanMaster === 'Condensed Milk Carnation' && cleanProdName.includes('condensed milk')) isMatch = true;
@@ -231,18 +233,16 @@ function handleImportStocklist(file) {
                 }
             }
 
+            // Simpan hasil ke variabel global stok
             stokGudangUser = tempAggregat;
             
-            // Panggil paksa render tabel
+            // Re-render tabel
             hitungKebutuhanBahanBaku();
             
-            // Reset nilai input file agar bisa diupload ulang
-            document.getElementById('excelStocklistFile').value = '';
+            alert("Berhasil mengimpor dan mengonversi Stocklist Gudang!");
 
         } catch (err) {
-            alert("Gagal membaca file Excel: " + err.message);
+            alert("Gagal memproses file Excel: " + err.message);
         }
     };
-
-    reader.readAsArrayBuffer(file);
 }
