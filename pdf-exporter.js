@@ -2,7 +2,7 @@
  * Module Khusus Ekspor PDF Dashboard Analisis Penjualan & Waste
  */
 
-function downloadPDFSales() {
+async function downloadPDFSales() {
     // 1. Dapatkan tab yang sedang aktif
     let activeTab = document.querySelector('#sectionSales .tab-content.active');
     if (!activeTab) {
@@ -27,7 +27,98 @@ function downloadPDFSales() {
     // Klon isi tab aktif
     let contentClone = activeTab.cloneNode(true);
 
-    // 3. Konversi Canvas Chart.js menjadi Gambar PNG
+    // 3. JIKA TAB PENJUALAN: GENERATE GRAFIK UNTUK SEMUA PRODUK
+    if (activeTab.id === 'tabPenjualanHarian') {
+        let selectProduk = document.getElementById('selectProduk');
+        let options = Array.from(selectProduk.options).map(opt => opt.value);
+
+        if (options.length > 0) {
+            // Sembunyikan dropdown select di hasil PDF
+            let cloneSelectDiv = contentClone.querySelector('#selectProduk')?.parentNode;
+            if (cloneSelectDiv) {
+                cloneSelectDiv.innerHTML = '<h3 style="margin-top:20px;">6. Grafik Penjualan Per Masing-Masing Produk</h3>';
+            }
+
+            // Buat kontainer untuk menampung semua grafik produk
+            let allChartsContainer = document.createElement('div');
+            allChartsContainer.id = 'pdfAllProductCharts';
+
+            // Dapatkan canvas sementara secara tersembunyi di DOM
+            let tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 900;
+            tempCanvas.height = 250;
+            tempCanvas.style.display = 'none';
+            document.body.appendChild(tempCanvas);
+            let tempCtx = tempCanvas.getContext('2d');
+
+            // Simpan pilihan produk saat ini di web
+            let currentSelected = selectProduk.value;
+
+            // Looping buat grafik setiap produk
+            for (let pName of options) {
+                let dataProduk = window.currentArrTgl.map(tgl => 
+                    (window.currentMatrixSales[tgl] && window.currentMatrixSales[tgl][pName]) ? window.currentMatrixSales[tgl][pName] : 0
+                );
+
+                // Buat Chart sementara
+                let tempChart = new Chart(tempCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: window.currentArrTgl,
+                        datasets: [{ 
+                            label: 'Penjualan: ' + pName, 
+                            data: dataProduk, 
+                            backgroundColor: '#3498db', 
+                            borderRadius: 4 
+                        }]
+                    },
+                    options: { 
+                        responsive: false, 
+                        animation: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Grafik Penjualan: ' + pName,
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        }
+                    }
+                });
+
+                // Ubah ke PNG
+                let imgUrl = tempCanvas.toDataURL('image/png');
+                tempChart.destroy();
+
+                // Buat elemen Image untuk PDF
+                let prodBox = document.createElement('div');
+                prodBox.style.marginBottom = '25px';
+                prodBox.style.pageBreakInside = 'avoid';
+                prodBox.style.breakInside = 'avoid';
+
+                let img = document.createElement('img');
+                img.src = imgUrl;
+                img.style.width = '100%';
+                img.style.height = 'auto';
+                img.style.maxHeight = '230px';
+                img.style.display = 'block';
+
+                prodBox.appendChild(img);
+                allChartsContainer.appendChild(prodBox);
+            }
+
+            // Hapus canvas sementara & kembalikan posisi select
+            document.body.removeChild(tempCanvas);
+            selectProduk.value = currentSelected;
+            updateChartProduk(); // Kembalikan grafik web
+
+            // Masukkan semua grafik produk ke dalam kloningan PDF
+            if (cloneSelectDiv) {
+                cloneSelectDiv.appendChild(allChartsContainer);
+            }
+        }
+    }
+
+    // 4. KONVERSI CANVAS GRAFIK TOTAL KE PNG
     let originalCanvases = activeTab.querySelectorAll('canvas');
     let clonedCanvases = contentClone.querySelectorAll('canvas');
 
@@ -47,16 +138,14 @@ function downloadPDFSales() {
         }
     });
 
-    // 4. ATUR ATURAN PEMISAHAN HALAMAN (PAGE BREAK)
-    // A. Pengaturan Judul (h3): Jangan berpisah dengan konten di bawahnya!
+    // 5. ATUR ATURAN PEMISAHAN HALAMAN (PAGE BREAK)
     let headings = contentClone.querySelectorAll('h3');
     headings.forEach((h, index) => {
         h.style.pageBreakAfter = 'avoid';
         h.style.breakAfter = 'avoid';
-        h.style.marginTop = '10px';
+        h.style.marginTop = '15px';
         h.style.marginBottom = '10px';
 
-        // Jika ada lebih dari satu sub-judul h3 dalam satu tab, pindahkan h3 berikutnya ke halaman baru
         if (index > 0) {
             h.style.pageBreakBefore = 'always';
             h.style.breakBefore = 'page';
@@ -64,7 +153,6 @@ function downloadPDFSales() {
         }
     });
 
-    // B. Cegah Grafik dan Tabel Terpotong di Tengah
     let blocks = contentClone.querySelectorAll('.chart-box, img, .table-wrapper, .grid-2');
     blocks.forEach(block => {
         block.style.pageBreakInside = 'avoid';
@@ -72,7 +160,7 @@ function downloadPDFSales() {
         block.style.marginBottom = '15px';
     });
 
-    // 5. Susun Header PDF
+    // 6. SUSUN HEADER PDF
     pdfContainer.innerHTML = `
         <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 8px;">
             <h2 style="margin: 0; color: #2c3e50; font-size: 16px; font-weight: bold; text-transform: uppercase;">
@@ -87,7 +175,7 @@ function downloadPDFSales() {
         </div>
     `;
 
-    // 6. Rapikan Ukuran Tabel & Grid Khusus PDF
+    // 7. RAPIKAN UKURAN TABEL & GRID
     let wrappers = pdfContainer.querySelectorAll('.table-wrapper');
     wrappers.forEach(w => {
         w.style.overflow = 'visible';
@@ -118,9 +206,9 @@ function downloadPDFSales() {
         }
     });
 
-    // 7. Konfigurasi Ekspor PDF
+    // 8. KONFIGURASI DAN PROSES DOWNLOAD
     let opt = {
-        margin:       [0.3, 0.3, 0.3, 0.3], // top, left, bottom, right (inch)
+        margin:       [0.3, 0.3, 0.3, 0.3],
         filename:     `Rekapan_Penjualan_${activeTabTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${awal}_sd_${akhir}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, logging: false },
@@ -128,6 +216,5 @@ function downloadPDFSales() {
         pagebreak:    { mode: ['css', 'legacy'] }
     };
 
-    // 8. Simpan File PDF
     html2pdf().set(opt).from(pdfContainer).save();
 }
