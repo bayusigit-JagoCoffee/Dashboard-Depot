@@ -38,7 +38,7 @@ function downloadPDFSales() {
             img.src = dataUrl;
             img.style.width = '100%';
             img.style.height = 'auto';
-            img.style.maxHeight = '280px';
+            img.style.maxHeight = '240px';
             img.style.display = 'block';
             img.style.margin = '0 auto';
 
@@ -47,23 +47,30 @@ function downloadPDFSales() {
         }
     });
 
-    // 4. PISAHKAN SETIAP KATEGORI / SUB-BAGIAN KE HALAMAN BARU
-    // Cari semua baris grid atau blok judul di dalam tab
-    let sections = contentClone.children;
-    for (let i = 0; i < sections.length; i++) {
-        let el = sections[i];
-        
-        // Elemen setelah bagian pertama otomatis dipindah ke halaman baru
-        if (i > 0) {
-            el.style.pageBreakBefore = 'always';
-            el.style.breakBefore = 'page';
-            el.style.paddingTop = '15px';
-        }
+    // 4. ATUR ATURAN PEMISAHAN HALAMAN (PAGE BREAK)
+    // A. Pengaturan Judul (h3): Jangan berpisah dengan konten di bawahnya!
+    let headings = contentClone.querySelectorAll('h3');
+    headings.forEach((h, index) => {
+        h.style.pageBreakAfter = 'avoid';
+        h.style.breakAfter = 'avoid';
+        h.style.marginTop = '10px';
+        h.style.marginBottom = '10px';
 
-        // Cegah elemen di dalam blok terpotong internal
-        el.style.pageBreakInside = 'avoid';
-        el.style.breakInside = 'avoid';
-    }
+        // Jika ada lebih dari satu sub-judul h3 dalam satu tab, pindahkan h3 berikutnya ke halaman baru
+        if (index > 0) {
+            h.style.pageBreakBefore = 'always';
+            h.style.breakBefore = 'page';
+            h.style.paddingTop = '15px';
+        }
+    });
+
+    // B. Cegah Grafik dan Tabel Terpotong di Tengah
+    let blocks = contentClone.querySelectorAll('.chart-box, img, .table-wrapper, .grid-2');
+    blocks.forEach(block => {
+        block.style.pageBreakInside = 'avoid';
+        block.style.breakInside = 'avoid';
+        block.style.marginBottom = '15px';
+    });
 
     // 5. Susun Header PDF
     pdfContainer.innerHTML = `
@@ -111,7 +118,7 @@ function downloadPDFSales() {
         }
     });
 
-    // 7. Konfigurasi Ekspor PDF dengan Mode Pagebreak Strict
+    // 7. Konfigurasi Ekspor PDF
     let opt = {
         margin:       [0.3, 0.3, 0.3, 0.3], // top, left, bottom, right (inch)
         filename:     `Rekapan_Penjualan_${activeTabTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${awal}_sd_${akhir}.pdf`,
