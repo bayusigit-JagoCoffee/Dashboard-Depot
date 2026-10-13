@@ -1,34 +1,98 @@
-// Parser & Auto Import Excel Stocklist Gudang (Fixed Render & Reset Input)
+/**
+ * Module Khusus Stok Bahan Baku & Auto-Import Stocklist Gudang
+ */
+
+const masterBahanBaku = {
+    'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box' },
+    'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg' },
+    'Brown Sugar 5000 Gr': { konversiGr: 5000, satuan: 'Jrg' },
+    'Choco Powder': { konversiGr: 12000, satuan: 'Box' },
+    'Condensed Milk Carnation': { konversiGr: 16000, satuan: 'Box' },
+    'Garam Gurih Miwon 500gr': { konversiGr: 500, satuan: 'Pack' },
+    'Granulated Sugar 50000gr': { konversiGr: 50000, satuan: 'Sack' },
+    'Lemon Extract 1000ml': { konversiGr: 1000, satuan: 'Botol' },
+    'Lemon Puree 5000ml': { konversiGr: 5000, satuan: 'Jrg' },
+    'Liquid Creamer': { konversiGr: 1000, satuan: 'Pcs' },
+    'Matcha Powder Voya 1000 Gr': { konversiGr: 1000, satuan: 'Pack' },
+    'Melcreamer 25000gr': { konversiGr: 25000, satuan: 'Sack' },
+    'Oatside Barista Blend 1000ml': { konversiGr: 1000, satuan: 'Pcs' },
+    'Orange Valencia NFC': { konversiGr: 5000, satuan: 'Jrg' },
+    'Robusta Coffee Beans 1000gr': { konversiGr: 5000, satuan: 'Box' },
+    'Susu UHT Diamond 1000ml': { konversiGr: 12000, satuan: 'Box' },
+    'Syrup Salted Caramel': { konversiGr: 5000, satuan: 'Jrg' },
+    'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box' }
+};
+
+let stokGudangUser = {};
+
+function renderTabelBahanBakuDirect() {
+    let tbody = document.querySelector("#tblRawMaterials tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    let no = 1;
+    for (let bahan in masterBahanBaku) {
+        let meta = masterBahanBaku[bahan];
+        let reqGr = 0;
+        let reqKemasan = "0.00";
+        let stokCurrent = parseFloat(stokGudangUser[bahan]) || 0;
+        
+        let statusBadge = '';
+        if (stokCurrent > 0) {
+            statusBadge = `<span style="background-color:#2ecc71; color:white; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:11px;">🟢 Aman</span>`;
+        } else {
+            statusBadge = `<span style="background-color:#e74c3c; color:white; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:11px;">🔴 Kritis (Kosong)</span>`;
+        }
+
+        let rowHtml = `
+            <tr>
+                <td><b>${no++}</b></td>
+                <td class="text-left">${bahan}</td>
+                <td><b>${meta.satuan}</b></td>
+                <td>0 gr/ml</td>
+                <td><b style="color:#2980b9;">0.00 ${meta.satuan}</b></td>
+                <td>
+                    <input type="number" value="${stokCurrent.toFixed(2)}" min="0" step="0.1" style="width:80px; text-align:center; font-weight:bold;" oninput="stokGudangUser['${bahan}']=parseFloat(this.value)||0; renderTabelBahanBakuDirect();" /> ${meta.satuan}
+                </td>
+                <td>${statusBadge}</td>
+            </tr>
+        `;
+        tbody.innerHTML += rowHtml;
+    }
+}
+
+function hitungKebutuhanBahanBaku() {
+    renderTabelBahanBakuDirect();
+}
+
 function handleImportStocklist(inputElem) {
-    let file = inputElem.files[0];
+    let file = inputElem ? inputElem.files[0] : null;
     if (!file) return;
 
     if (typeof XLSX === 'undefined') {
-        alert("Library Excel (SheetJS) belum siap. Silakan refresh halaman web.");
+        alert("Library Excel belum siap. Silakan refresh halaman.");
         return;
     }
 
     let reader = new FileReader();
-    
+    reader.readAsArrayBuffer(file);
+
     reader.onload = function(e) {
         try {
             let data = new Uint8Array(e.target.result);
             let workbook = XLSX.read(data, { type: 'array' });
-            let firstSheetName = workbook.SheetNames[0];
-            let worksheet = workbook.Sheets[firstSheetName];
-            
+            let worksheet = workbook.Sheets[workbook.SheetNames[0]];
             let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             
             let tempAggregat = {};
             Object.keys(masterBahanBaku).forEach(b => tempAggregat[b] = 0);
 
-            // Scan baris data dari Excel (Mulai dari baris ke-9)
             for (let i = 8; i < rawJson.length; i++) {
                 let row = rawJson[i];
                 if (!row || row.length < 3) continue;
 
-                let prodName = row[2] ? row[2].toString().trim() : ''; // Kolom C
-                let stockQty = parseFloat(row[9]) || 0;                // Kolom J
+                let prodName = row[2] ? row[2].toString().trim() : '';
+                let stockQty = parseFloat(row[9]) || 0;
 
                 if (!prodName || stockQty === 0) continue;
 
@@ -57,34 +121,22 @@ function handleImportStocklist(inputElem) {
                     else if (bahanMaster === 'Syrup Vanilla' && cleanProdName.includes('syrup vanilla')) isMatch = true;
 
                     if (isMatch) {
-                        if (bahanMaster === 'Syrup Salted Caramel') {
-                            tempAggregat[bahanMaster] += (stockQty / 5000);
-                        } else if (bahanMaster === 'Syrup Vanilla') {
-                            tempAggregat[bahanMaster] += (stockQty / 6960);
-                        } else if (bahanMaster === 'Susu UHT Diamond 1000ml') {
-                            tempAggregat[bahanMaster] += (stockQty / 12);
-                        } else {
-                            tempAggregat[bahanMaster] += stockQty;
-                        }
+                        if (bahanMaster === 'Syrup Salted Caramel') tempAggregat[bahanMaster] += (stockQty / 5000);
+                        else if (bahanMaster === 'Syrup Vanilla') tempAggregat[bahanMaster] += (stockQty / 6960);
+                        else if (bahanMaster === 'Susu UHT Diamond 1000ml') tempAggregat[bahanMaster] += (stockQty / 12);
+                        else tempAggregat[bahanMaster] += stockQty;
                         break;
                     }
                 }
             }
 
             stokGudangUser = tempAggregat;
-            
-            // Langsung panggil render tabel
-            renderTabelBahanBaku({});
-            
-            // Reset elemen input file agar bisa memilih file yang sama berulang kali
-            inputElem.value = '';
-            
-            alert("Berhasil mengimpor dan mengonversi Stocklist Gudang!");
+            renderTabelBahanBakuDirect();
+            if(inputElem) inputElem.value = '';
+            alert("Berhasil mengimpor Stocklist Gudang!");
 
         } catch (err) {
             alert("Gagal membaca file Excel: " + err.message);
         }
     };
-
-    reader.readAsArrayBuffer(file);
 }
