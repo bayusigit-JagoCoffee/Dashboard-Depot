@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Modul Script Terpisah -->
     <script src="pdf-exporter.js"></script>
@@ -190,13 +191,11 @@
         <button class="tab-btn" onclick="bukaTabSupplies(event, 'tabSuppliesJagoan')">👤 2. Rekap Per Jagoan</button>
     </div>
 
-    <!-- TAB 1 SUPPLIES: HARIAN -->
     <div id="tabSuppliesHarian" class="tab-content-supplies" style="display:block; padding-top:20px;">
         <h3>Tabel Rekapitulasi Supplies Per Tanggal</h3>
         <div class="table-wrapper" id="containerTblSuppliesHarian"></div>
     </div>
 
-    <!-- TAB 2 SUPPLIES: REKAP PER JAGOAN -->
     <div id="tabSuppliesJagoan" class="tab-content-supplies" style="display:none; padding-top:20px;">
         <div class="filter-box" style="background-color: #f8fafc;">
             <div class="filter-group">
@@ -258,6 +257,14 @@
     <h2>🧪 Stok Bahan Baku Gudang & Analisis Restock</h2>
     <p style="font-size:13px; color:#555;">Kebutuhan bahan baku dihitung otomatis berdasarkan Rencana Produksi Harian (BOM Multi-Level).</p>
     
+    <div style="margin-bottom:15px; background:#eef2f5; padding:12px; border-radius:8px; display:flex; align-items:center; gap:15px;">
+        <label class="btn-blue" style="margin:0; font-size:13px; cursor:pointer;">
+            📂 Auto-Import Stocklist Excel/CSV Gudang
+            <input type="file" id="excelStocklistFile" accept=".xlsx, .xls, .csv" onchange="handleImportStocklist(this.files[0])" style="display:none;" />
+        </label>
+        <span style="font-size:12px; color:#666;">*Unggah file stocklist Excel untuk mengisi & mengonversi stok fisik otomatis.</span>
+    </div>
+
     <div class="table-wrapper">
         <table id="tblRawMaterials">
             <thead>
@@ -516,10 +523,7 @@
 
         let baselineEst = Math.max(soldH1, soldH7);
 
-        // Target Kebutuhan Gross (Baseline + Buffer %)
         let grossNeed = Math.ceil(baselineEst * (1 + (bufferVal / 100)));
-
-        // Net Kebutuhan Produksi
         let netNeeded = grossNeed - sisaStok;
 
         let finalProduceCup = 0;
@@ -527,17 +531,14 @@
 
         if (netNeeded > 0) {
             if (p.name === 'Salted Caramel Latte') {
-                // Salted Caramel Latte (Kelipatan 500 cup / 0.5 Batch)
                 let numMinBatches = Math.ceil(netNeeded / 500);
                 finalProduceCup = numMinBatches * 500;
                 batchText = (finalProduceCup / 1000) + " Batch";
             } else if (p.name === 'Kopi Susu JAGO') {
-                // Kopi Susu JAGO (Batch 1000 cup)
                 let numBatches = Math.ceil(netNeeded / 1000);
                 finalProduceCup = numBatches * 1000;
                 batchText = numBatches + " Batch";
             } else {
-                // Produk Batch 100 cup
                 let numBatches = Math.ceil(netNeeded / p.batchSize);
                 finalProduceCup = numBatches * p.batchSize;
                 batchText = numBatches + " Batch";
