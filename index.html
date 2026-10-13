@@ -284,19 +284,65 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec'; 
     // =======================================================
 
-    // MASTER RULES PRODUK
-    const masterProdukRules = [
-        { name: 'Citrus Cold Brew', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, status: 'medium' },
-        { name: 'Pink Coco Lemonade', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, status: 'low' },
-        { name: 'JAGO Americano', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, status: 'medium' },
-        { name: 'JAGO Chocolate', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, status: 'low' },
-        { name: 'Kopi Susu JAGO', batchSize: 1000, minBatch: 1000, shelfLife: 5, defaultBuffer: 50, status: 'bestseller' },
-        { name: 'Kopi Susu Oatside', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, status: 'medium' },
-        { name: 'Matcha Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 40, status: 'bestseller' },
-        { name: 'Salted Caramel Latte', batchSize: 1000, minBatch: 500, shelfLife: 5, defaultBuffer: 40, status: 'bestseller' },
-        { name: 'Vanilla Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, status: 'low' },
-        { name: 'Mont Blanc Shake', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, status: 'medium' }
-    ];
+    // MASTER RULES PRODUK (Default Buffer % Sudah Disesuaikan Alur Depot)
+const masterProdukRules = [
+    { name: 'Citrus Cold Brew', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, status: 'medium' },
+    { name: 'Pink Coco Lemonade', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 10, status: 'low' },
+    { name: 'JAGO Americano', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 15, status: 'medium' },
+    { name: 'JAGO Chocolate', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 10, status: 'low' },
+    { name: 'Kopi Susu JAGO', batchSize: 1000, minBatch: 1000, shelfLife: 5, defaultBuffer: 25, status: 'bestseller' },
+    { name: 'Kopi Susu Oatside', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, status: 'medium' },
+    { name: 'Matcha Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 20, status: 'bestseller' },
+    { name: 'Salted Caramel Latte', batchSize: 1000, minBatch: 500, shelfLife: 5, defaultBuffer: 20, status: 'bestseller' },
+    { name: 'Vanilla Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 10, status: 'low' },
+    { name: 'Mont Blanc Shake', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 15, status: 'medium' }
+];
+
+function kalkulasiBarisProduksi(index) {
+    let p = masterProdukRules[index];
+    let soldH1 = parseInt(document.getElementById(`soldH1_${index}`).innerText) || 0;
+    let soldH7 = parseInt(document.getElementById(`soldH7_${index}`).innerText) || 0;
+    
+    // Nilai Buffer % yang diinput manual atau bawaan default
+    let bufferVal = parseFloat(document.getElementById(`bufferInput_${index}`).value) || 0;
+    let sisaStok = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
+
+    // Ambil nilai estimasi penjualan tertinggi antara H-1 dan H-7
+    let baselineEst = Math.max(soldH1, soldH7);
+
+    // Kebutuhan Target = Baseline Penjualan + (Baseline * Buffer %)
+    // Contoh: Baseline 560 cup + 15% Buffer = Total Target 644 cup
+    let totalKebutuhan = Math.ceil(baselineEst * (1 + (bufferVal / 100)));
+
+    // Sisa kebutuhan bersih yang harus diproduksi besok setelah dikurangi sisa stok depot
+    let netNeeded = totalKebutuhan - sisaStok;
+
+    let finalProduceCup = 0;
+    let batchText = "0 Batch";
+
+    if (netNeeded > 0) {
+        if (p.name === 'Salted Caramel Latte') {
+            // Salted Caramel Latte memiliki kelipatan minimal 500 cup (0.5 Batch)
+            let numMinBatches = Math.ceil(netNeeded / 500);
+            finalProduceCup = numMinBatches * 500;
+            batchText = (finalProduceCup / 1000) + " Batch";
+        } else {
+            // Produk lain mengikuti Batch Size baku (100 cup / 1000 cup)
+            let numBatches = Math.ceil(netNeeded / p.batchSize);
+            finalProduceCup = numBatches * p.batchSize;
+            batchText = numBatches + " Batch";
+        }
+    }
+
+    // Tampilkan hasil rekomendasi ke tabel
+    document.getElementById(`rekCup_${index}`).innerText = finalProduceCup + " cup";
+    document.getElementById(`rekBatch_${index}`).innerText = batchText;
+
+    // Otomatis sinkronkan kebutuhan bahan baku gudang di tab Raw Materials
+    if(typeof hitungKebutuhanBahanBaku === 'function') {
+        hitungKebutuhanBahanBaku();
+    }
+}
 
     const targetSuppliesItems = [
         'Plastik Sampah (Pcs)',
