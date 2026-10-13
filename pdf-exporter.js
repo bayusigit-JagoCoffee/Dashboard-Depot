@@ -22,34 +22,50 @@ function downloadPDFSales() {
     pdfContainer.style.backgroundColor = '#ffffff';
     pdfContainer.style.fontFamily = 'Arial, sans-serif';
     pdfContainer.style.color = '#333';
-    pdfContainer.style.width = '1000px';
+    pdfContainer.style.width = '980px'; // Ukuran presisi A4 Landscape
 
     // Klon isi tab aktif
     let contentClone = activeTab.cloneNode(true);
 
-    // 3. Tangani Canvas Chart.js secara manual agar Grafik tidak Kosong
+    // 3. Konversi Canvas Chart.js menjadi Gambar PNG
     let originalCanvases = activeTab.querySelectorAll('canvas');
     let clonedCanvases = contentClone.querySelectorAll('canvas');
 
     originalCanvases.forEach((origCanvas, idx) => {
         if (clonedCanvases[idx]) {
-            // Ubah canvas asli menjadi data URL gambar PNG
             let dataUrl = origCanvas.toDataURL('image/png');
             let img = document.createElement('img');
             img.src = dataUrl;
             img.style.width = '100%';
             img.style.height = 'auto';
-            img.style.maxHeight = '260px';
+            img.style.maxHeight = '280px';
             img.style.display = 'block';
             img.style.margin = '0 auto';
 
-            // Ganti elemen canvas kloningan dengan gambar PNG
             let canvasParent = clonedCanvases[idx].parentNode;
             canvasParent.replaceChild(img, clonedCanvases[idx]);
         }
     });
 
-    // 4. Susun Header PDF
+    // 4. PISAHKAN SETIAP KATEGORI / SUB-BAGIAN KE HALAMAN BARU
+    // Cari semua baris grid atau blok judul di dalam tab
+    let sections = contentClone.children;
+    for (let i = 0; i < sections.length; i++) {
+        let el = sections[i];
+        
+        // Elemen setelah bagian pertama otomatis dipindah ke halaman baru
+        if (i > 0) {
+            el.style.pageBreakBefore = 'always';
+            el.style.breakBefore = 'page';
+            el.style.paddingTop = '15px';
+        }
+
+        // Cegah elemen di dalam blok terpotong internal
+        el.style.pageBreakInside = 'avoid';
+        el.style.breakInside = 'avoid';
+    }
+
+    // 5. Susun Header PDF
     pdfContainer.innerHTML = `
         <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 8px;">
             <h2 style="margin: 0; color: #2c3e50; font-size: 16px; font-weight: bold; text-transform: uppercase;">
@@ -64,7 +80,7 @@ function downloadPDFSales() {
         </div>
     `;
 
-    // 5. Rapikan Tampilan Tabel & Grid Khusus PDF
+    // 6. Rapikan Ukuran Tabel & Grid Khusus PDF
     let wrappers = pdfContainer.querySelectorAll('.table-wrapper');
     wrappers.forEach(w => {
         w.style.overflow = 'visible';
@@ -75,13 +91,13 @@ function downloadPDFSales() {
     let tables = pdfContainer.querySelectorAll('table');
     tables.forEach(t => {
         t.style.width = '100%';
-        t.style.fontSize = '10px';
+        t.style.fontSize = '9.5px';
         t.style.borderCollapse = 'collapse';
     });
 
     let cells = pdfContainer.querySelectorAll('th, td');
     cells.forEach(cell => {
-        cell.style.padding = '4px 5px';
+        cell.style.padding = '5px 5px';
         cell.style.border = '1px solid #cbd5e1';
     });
 
@@ -95,15 +111,16 @@ function downloadPDFSales() {
         }
     });
 
-    // 6. Konfigurasi Ekspor PDF
+    // 7. Konfigurasi Ekspor PDF dengan Mode Pagebreak Strict
     let opt = {
-        margin:       [0.3, 0.3, 0.3, 0.3],
+        margin:       [0.3, 0.3, 0.3, 0.3], // top, left, bottom, right (inch)
         filename:     `Rekapan_Penjualan_${activeTabTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${awal}_sd_${akhir}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' },
+        pagebreak:    { mode: ['css', 'legacy'] }
     };
 
-    // 7. Jalankan Proses Simpan PDF
+    // 8. Simpan File PDF
     html2pdf().set(opt).from(pdfContainer).save();
 }
