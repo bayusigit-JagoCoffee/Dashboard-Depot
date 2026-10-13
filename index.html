@@ -358,48 +358,49 @@
     }
 
     function gantiMode(mode) {
-        document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
-        document.getElementById('sectionUpload').style.display = 'block';
+    document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('sectionUpload').style.display = 'block';
 
-        if (mode === 'sales') {
-            document.querySelectorAll('.btn-mode')[0].classList.add('active');
-            document.getElementById('sectionSales').style.display = 'block';
-            document.getElementById('sectionSupplies').style.display = 'none';
-            document.getElementById('sectionPlanner').style.display = 'none';
-            document.getElementById('sectionMaterials').style.display = 'none';
-        } else if (mode === 'supplies') {
-            document.querySelectorAll('.btn-mode')[1].classList.add('active');
-            document.getElementById('sectionSales').style.display = 'none';
-            document.getElementById('sectionSupplies').style.display = 'block';
-            document.getElementById('sectionPlanner').style.display = 'none';
-            document.getElementById('sectionMaterials').style.display = 'none';
-        } else if (mode === 'planner') {
-            document.querySelectorAll('.btn-mode')[2].classList.add('active');
-            document.getElementById('sectionUpload').style.display = 'none';
-            document.getElementById('sectionSales').style.display = 'none';
-            document.getElementById('sectionSupplies').style.display = 'none';
-            document.getElementById('sectionPlanner').style.display = 'block';
-            document.getElementById('sectionMaterials').style.display = 'none';
-            
-            let today = new Date();
-            let tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('tglRencanaProduksi').value = tomorrow.toISOString().split('T')[0];
-            
-            hitungRekomendasiProduksi();
-        } else if (mode === 'materials') {
-            document.querySelectorAll('.btn-mode')[3].classList.add('active');
-            document.getElementById('sectionUpload').style.display = 'none';
-            document.getElementById('sectionSales').style.display = 'none';
-            document.getElementById('sectionSupplies').style.display = 'none';
-            document.getElementById('sectionPlanner').style.display = 'none';
-            document.getElementById('sectionMaterials').style.display = 'block';
+    if (mode === 'sales') {
+        document.querySelectorAll('.btn-mode')[0].classList.add('active');
+        document.getElementById('sectionSales').style.display = 'block';
+        document.getElementById('sectionSupplies').style.display = 'none';
+        document.getElementById('sectionPlanner').style.display = 'none';
+        document.getElementById('sectionMaterials').style.display = 'none';
+    } else if (mode === 'supplies') {
+        document.querySelectorAll('.btn-mode')[1].classList.add('active');
+        document.getElementById('sectionSales').style.display = 'none';
+        document.getElementById('sectionSupplies').style.display = 'block';
+        document.getElementById('sectionPlanner').style.display = 'none';
+        document.getElementById('sectionMaterials').style.display = 'none';
+    } else if (mode === 'planner') {
+        document.querySelectorAll('.btn-mode')[2].classList.add('active');
+        document.getElementById('sectionUpload').style.display = 'none';
+        document.getElementById('sectionSales').style.display = 'none';
+        document.getElementById('sectionSupplies').style.display = 'none';
+        document.getElementById('sectionPlanner').style.display = 'block';
+        document.getElementById('sectionMaterials').style.display = 'none';
+        
+        let today = new Date();
+        let tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('tglRencanaProduksi').value = tomorrow.toISOString().split('T')[0];
+        
+        hitungRekomendasiProduksi();
+    } else if (mode === 'materials') {
+        document.querySelectorAll('.btn-mode')[3].classList.add('active');
+        document.getElementById('sectionUpload').style.display = 'none';
+        document.getElementById('sectionSales').style.display = 'none';
+        document.getElementById('sectionSupplies').style.display = 'none';
+        document.getElementById('sectionPlanner').style.display = 'none';
+        document.getElementById('sectionMaterials').style.display = 'block';
 
-            if(typeof hitungKebutuhanBahanBaku === 'function') {
-                hitungKebutuhanBahanBaku();
-            }
+        // PAKSA RENDER TABEL SEGERA BEGITO MENU DI-KLIK
+        if (typeof renderTabelBahanBaku === 'function') {
+            renderTabelBahanBaku({});
         }
     }
+}
 
     function bukaTab(evt, tabName) {
         let contents = document.getElementsByClassName("tab-content");
