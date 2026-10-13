@@ -28,15 +28,15 @@ const masterBahanBaku = {
 const resepBahanBakuPerBatch = {
     'Kopi Susu JAGO': {
         'Melcreamer 25000gr': 12500,
-        'Aren Sugar': 12500,               // Dari Base Kopsu
-        'Condensed Milk Carnation': 12500, // Dari Base Kopsu
-        'Robusta Coffee Beans 1000gr': 26462.5, // Dari Base Robusta (72500 * 365 / 1000)
+        'Aren Sugar': 12500,               
+        'Condensed Milk Carnation': 12500, 
+        'Robusta Coffee Beans 1000gr': 26462.5, 
         'Susu UHT Diamond 1000ml': 70000
     },
     'Salted Caramel Latte': {
         'Syrup Salted Caramel': 18250,
-        'Granulated Sugar 50000gr': 9000,  // Dari Simpel Syrup
-        'Robusta Coffee Beans 1000gr': 27922.5, // Dari Base Robusta (76500 * 365 / 1000)
+        'Granulated Sugar 50000gr': 9000,  
+        'Robusta Coffee Beans 1000gr': 27922.5, 
         'Melcreamer 25000gr': 9000,
         'Susu UHT Diamond 1000ml': 67250,
         'Garam Gurih Miwon 500gr': 300
@@ -45,14 +45,14 @@ const resepBahanBakuPerBatch = {
         'Matcha Powder Voya 1000 Gr': 1800,
         'Melcreamer 25000gr': 2250,
         'Susu UHT Diamond 1000ml': 6350,
-        'Granulated Sugar 50000gr': 1200   // Dari Simpel Syrup
+        'Granulated Sugar 50000gr': 1200   
     },
     'JAGO Americano': {
-        'Arabica Coffee Beans 1000gr': 5696 // Dari Base Arabica (17800 * 320 / 1000)
+        'Arabica Coffee Beans 1000gr': 5696 
     },
     'Citrus Cold Brew': {
-        'Arabica Coffee Beans 1000gr': 4448, // Dari Base Arabica (13900 * 320 / 1000)
-        'Granulated Sugar 50000gr': 3200,   // Dari Simpel Syrup
+        'Arabica Coffee Beans 1000gr': 4448, 
+        'Granulated Sugar 50000gr': 3200,   
         'Lemon Extract 1000ml': 450,
         'Lemon Puree 5000ml': 450
     },
@@ -60,7 +60,7 @@ const resepBahanBakuPerBatch = {
         'Oatside Barista Blend 1000ml': 7250,
         'Melcreamer 25000gr': 1800,
         'Aren Sugar': 1530,
-        'Robusta Coffee Beans 1000gr': 2708.3 // Dari Base Robusta (7420 * 365 / 1000)
+        'Robusta Coffee Beans 1000gr': 2708.3 
     },
     'JAGO Chocolate': {
         'Choco Powder': 1250,
@@ -69,15 +69,15 @@ const resepBahanBakuPerBatch = {
     },
     'Mont Blanc Shake': {
         'Liquid Creamer': 6500,
-        'Arabica Coffee Beans 1000gr': 2016, // Dari Base Arabica (6300 * 320 / 1000)
+        'Arabica Coffee Beans 1000gr': 2016, 
         'Brown Sugar 5000 Gr': 800,
-        'Granulated Sugar 50000gr': 1200,    // Dari Simpel Syrup
+        'Granulated Sugar 50000gr': 1200,    
         'Orange Valencia NFC': 3200
     },
     'Vanilla Latte': {
         'Susu UHT Diamond 1000ml': 9100,
         'Syrup Vanilla': 2250,
-        'Robusta Coffee Beans 1000gr': 2427.25 // Dari Base Robusta (6650 * 365 / 1000)
+        'Robusta Coffee Beans 1000gr': 2427.25 
     }
 };
 
@@ -89,22 +89,24 @@ function hitungKebutuhanBahanBaku() {
     let kebutuhanGram = {};
     Object.keys(masterBahanBaku).forEach(b => kebutuhanGram[b] = 0);
 
-    masterProdukRules.forEach((p, index) => {
-        let batchElem = document.getElementById(`rekBatch_${index}`);
-        if (batchElem) {
-            let batchText = batchElem.innerText.replace(' Batch', '').trim();
-            let numBatch = parseFloat(batchText) || 0;
+    if (typeof masterProdukRules !== 'undefined') {
+        masterProdukRules.forEach((p, index) => {
+            let batchElem = document.getElementById(`rekBatch_${index}`);
+            if (batchElem) {
+                let batchText = batchElem.innerText.replace(' Batch', '').trim();
+                let numBatch = parseFloat(batchText) || 0;
 
-            if (numBatch > 0 && resepBahanBakuPerBatch[p.name]) {
-                let resep = resepBahanBakuPerBatch[p.name];
-                for (let bahan in resep) {
-                    if (kebutuhanGram[bahan] !== undefined) {
-                        kebutuhanGram[bahan] += resep[bahan] * numBatch;
+                if (numBatch > 0 && resepBahanBakuPerBatch[p.name]) {
+                    let resep = resepBahanBakuPerBatch[p.name];
+                    for (let bahan in resep) {
+                        if (kebutuhanGram[bahan] !== undefined) {
+                            kebutuhanGram[bahan] += resep[bahan] * numBatch;
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 
     renderTabelBahanBaku(kebutuhanGram);
 }
@@ -156,67 +158,90 @@ function updateStokGudangValue(bahan, val) {
     hitungKebutuhanBahanBaku();
 }
 
-// Fungsi Parser & Import File Excel / CSV Stocklist Gudang
+// Parser & Auto Import Excel / CSV Stocklist Gudang
 function handleImportStocklist(file) {
     if (!file) return;
 
     let reader = new FileReader();
     reader.onload = function(e) {
-        let data = new Uint8Array(e.target.result);
-        let workbook = XLSX.read(data, { type: 'array' });
-        let firstSheetName = workbook.SheetNames[0];
-        let worksheet = workbook.Sheets[firstSheetName];
-        
-        // Convert sheet to json array of arrays
-        let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        let tempAggregat = {};
-        Object.keys(masterBahanBaku).forEach(b => tempAggregat[b] = 0);
+        try {
+            let data = new Uint8Array(e.target.result);
+            let workbook = XLSX.read(data, { type: 'array' });
+            let firstSheetName = workbook.SheetNames[0];
+            let worksheet = workbook.Sheets[firstSheetName];
+            
+            let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            let tempAggregat = {};
+            Object.keys(masterBahanBaku).forEach(b => tempAggregat[b] = 0);
 
-        // Abaikan baris 1-8 (index 0-7), baca mulai baris ke-9
-        for (let i = 8; i < rawJson.length; i++) {
-            let row = rawJson[i];
-            if (!row || row.length < 10) continue;
+            // Pindai setiap baris mulai baris ke-1 (setelah header)
+            for (let i = 0; i < rawJson.length; i++) {
+                let row = rawJson[i];
+                if (!row || row.length < 3) continue;
 
-            let prodName = row[2] ? row[2].toString().trim() : ''; // Kolom C
-            let stockQty = parseFloat(row[9]) || 0;                // Kolom J
+                // Cari kolom Product Name dan Stock Qty
+                let prodName = '';
+                let stockQty = 0;
 
-            if (!prodName || stockQty === 0) continue;
-
-            // Pencocokan ke Master Bahan Baku
-            for (let bahanMaster in masterBahanBaku) {
-                let cleanMasterName = bahanMaster.replace(/1000gr|5000gr|25000gr|1000ml|5000ml|500gr|Gr/gi, '').trim().toLowerCase();
-                let cleanProdName = prodName.toLowerCase();
-
-                // Cek pencocokan spesifik
-                let isMatch = false;
-                if (bahanMaster === 'Syrup Salted Caramel' && cleanProdName.includes('syrup salted caramel')) isMatch = true;
-                else if (bahanMaster === 'Syrup Vanilla' && cleanProdName.includes('syrup vanilla')) isMatch = true;
-                else if (bahanMaster === 'Susu UHT Diamond 1000ml' && cleanProdName.includes('susu uht diamond')) isMatch = true;
-                else if (bahanMaster === 'Aren Sugar' && (cleanProdName === 'aren sugar' || cleanProdName === 'aren sugar a2')) isMatch = true;
-                else if (!bahanMaster.includes('Syrup') && cleanProdName.includes(cleanMasterName)) isMatch = true;
-
-                if (isMatch) {
-                    if (bahanMaster === 'Syrup Salted Caramel') {
-                        // Stock Qty di Excel dlm ML -> konversi ke Jerigen (5000 ML)
-                        tempAggregat[bahanMaster] += (stockQty / 5000);
-                    } else if (bahanMaster === 'Syrup Vanilla') {
-                        // Stock Qty di Excel dlm ML -> konversi ke Box (6960 ML)
-                        tempAggregat[bahanMaster] += (stockQty / 6960);
-                    } else if (bahanMaster === 'Susu UHT Diamond 1000ml') {
-                        // Stock Qty di Excel dlm Pcs -> konversi ke Box (12 Pcs)
-                        tempAggregat[bahanMaster] += (stockQty / 12);
-                    } else {
-                        tempAggregat[bahanMaster] += stockQty;
+                for (let j = 0; j < row.length; j++) {
+                    let cell = row[j] ? row[j].toString().trim() : '';
+                    if (cell.toLowerCase().includes('beans') || cell.toLowerCase().includes('sugar') || cell.toLowerCase().includes('powder') || cell.toLowerCase().includes('milk') || cell.toLowerCase().includes('syrup') || cell.toLowerCase().includes('uht') || cell.toLowerCase().includes('creamer') || cell.toLowerCase().includes('lemon') || cell.toLowerCase().includes('matcha') || cell.toLowerCase().includes('valencia')) {
+                        prodName = cell;
                     }
-                    break;
+                    if (typeof row[j] === 'number' && row[j] > 0) {
+                        stockQty = row[j];
+                    }
+                }
+
+                if (!prodName || stockQty === 0) continue;
+
+                let cleanProdName = prodName.toLowerCase().replace(/\s+/g, ' ');
+
+                for (let bahanMaster in masterBahanBaku) {
+                    let isMatch = false;
+
+                    if (bahanMaster === 'Arabica Coffee Beans 1000gr' && cleanProdName.includes('arabica coffee beans')) isMatch = true;
+                    else if (bahanMaster === 'Robusta Coffee Beans 1000gr' && cleanProdName.includes('robusta coffee beans')) isMatch = true;
+                    else if (bahanMaster === 'Aren Sugar' && cleanProdName.includes('aren sugar')) isMatch = true;
+                    else if (bahanMaster === 'Brown Sugar 5000 Gr' && cleanProdName.includes('brown sugar')) isMatch = true;
+                    else if (bahanMaster === 'Choco Powder' && cleanProdName.includes('choco powder')) isMatch = true;
+                    else if (bahanMaster === 'Condensed Milk Carnation' && cleanProdName.includes('condensed milk')) isMatch = true;
+                    else if (bahanMaster === 'Garam Gurih Miwon 500gr' && cleanProdName.includes('garam gurih')) isMatch = true;
+                    else if (bahanMaster === 'Granulated Sugar 50000gr' && cleanProdName.includes('granulated sugar')) isMatch = true;
+                    else if (bahanMaster === 'Lemon Extract 1000ml' && cleanProdName.includes('lemon extract')) isMatch = true;
+                    else if (bahanMaster === 'Lemon Puree 5000ml' && cleanProdName.includes('lemon puree')) isMatch = true;
+                    else if (bahanMaster === 'Liquid Creamer' && cleanProdName.includes('liquid creamer')) isMatch = true;
+                    else if (bahanMaster === 'Matcha Powder Voya 1000 Gr' && cleanProdName.includes('matcha powder')) isMatch = true;
+                    else if (bahanMaster === 'Melcreamer 25000gr' && cleanProdName.includes('melcreamer')) isMatch = true;
+                    else if (bahanMaster === 'Oatside Barista Blend 1000ml' && cleanProdName.includes('oatside')) isMatch = true;
+                    else if (bahanMaster === 'Orange Valencia NFC' && cleanProdName.includes('orange valencia')) isMatch = true;
+                    else if (bahanMaster === 'Susu UHT Diamond 1000ml' && cleanProdName.includes('susu uht')) isMatch = true;
+                    else if (bahanMaster === 'Syrup Salted Caramel' && cleanProdName.includes('syrup salted caramel')) isMatch = true;
+                    else if (bahanMaster === 'Syrup Vanilla' && cleanProdName.includes('syrup vanilla')) isMatch = true;
+
+                    if (isMatch) {
+                        if (bahanMaster === 'Syrup Salted Caramel') {
+                            tempAggregat[bahanMaster] += (stockQty / 5000);
+                        } else if (bahanMaster === 'Syrup Vanilla') {
+                            tempAggregat[bahanMaster] += (stockQty / 6960);
+                        } else if (bahanMaster === 'Susu UHT Diamond 1000ml') {
+                            tempAggregat[bahanMaster] += (stockQty / 12);
+                        } else {
+                            tempAggregat[bahanMaster] += stockQty;
+                        }
+                        break;
+                    }
                 }
             }
-        }
 
-        stokGudangUser = tempAggregat;
-        hitungKebutuhanBahanBaku();
-        alert("Berhasil mengimpor dan mengonversi Stocklist Gudang!");
+            stokGudangUser = tempAggregat;
+            hitungKebutuhanBahanBaku();
+            alert("Berhasil mengimpor dan mengonversi Stocklist Gudang!");
+
+        } catch (err) {
+            alert("Gagal membaca file Excel: " + err.message);
+        }
     };
 
     reader.readAsArrayBuffer(file);
