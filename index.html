@@ -258,19 +258,19 @@
         'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box', leadTime: 3 }
     };
 
-    // STANDAR RESEP BOM PER 1 CUP PRODUK (PRESISI DALAM GRAM/ML)
+    // STANDAR RESEP BOM PER 1 CUP PRODUK (PRESISI SESUAI FOTO RESEP TERBARU)
     const resepBahanBakuPerCup = {
         'Kopi Susu JAGO': { 
             'Melcreamer 25000gr': 12.5, 
-            'Aren Sugar': 12.5, 
-            'Condensed Milk Carnation': 12.5, 
-            'Robusta Coffee Beans 1000gr': 26.4625, 
+            'Aren Sugar': 12.5,                            // 25000gr Base Kopsu x 0.5 / 1000
+            'Condensed Milk Carnation': 12.5,               // 25000gr Base Kopsu x 0.5 / 1000
+            'Robusta Coffee Beans 1000gr': 5.7527,          // 72500gr Base Robusta x (365/4600) / 1000
             'Susu UHT Diamond 1000ml': 70.0 
         },
         'Salted Caramel Latte': { 
             'Syrup Salted Caramel': 18.25, 
-            'Granulated Sugar 50000gr': 9.0, 
-            'Robusta Coffee Beans 1000gr': 27.9225, 
+            'Granulated Sugar 50000gr': 4.5,                // 9000gr Simpel Syrup x 0.5 / 1000
+            'Robusta Coffee Beans 1000gr': 6.0701,          // 76500gr Base Robusta x (365/4600) / 1000
             'Melcreamer 25000gr': 9.0, 
             'Susu UHT Diamond 1000ml': 67.25, 
             'Garam Gurih Miwon 500gr': 0.3 
@@ -279,14 +279,14 @@
             'Matcha Powder Voya 1000 Gr': 18.0, 
             'Melcreamer 25000gr': 22.5, 
             'Susu UHT Diamond 1000ml': 63.5, 
-            'Granulated Sugar 50000gr': 12.0 
+            'Granulated Sugar 50000gr': 6.0                 // 1200gr Simpel Syrup x 0.5 / 100
         },
         'JAGO Americano': { 
-            'Arabica Coffee Beans 1000gr': 56.96 
+            'Arabica Coffee Beans 1000gr': 12.3826          // 17800gr Base Arabica x (320/4600) / 100
         },
         'Citrus Cold Brew': { 
-            'Arabica Coffee Beans 1000gr': 44.48, 
-            'Granulated Sugar 50000gr': 32.0, 
+            'Arabica Coffee Beans 1000gr': 9.6696,          // 13900gr Base Arabica x (320/4600) / 100
+            'Granulated Sugar 50000gr': 16.0,               // 3200gr Simpel Syrup x 0.5 / 100
             'Lemon Extract 1000ml': 4.5, 
             'Lemon Puree 5000ml': 4.5 
         },
@@ -294,7 +294,7 @@
             'Oatside Barista Blend 1000ml': 72.5, 
             'Melcreamer 25000gr': 18.0, 
             'Aren Sugar': 15.3, 
-            'Robusta Coffee Beans 1000gr': 27.083 
+            'Robusta Coffee Beans 1000gr': 5.8876           // 7420gr Base Robusta x (365/4600) / 100
         },
         'JAGO Chocolate': { 
             'Choco Powder': 12.5, 
@@ -303,15 +303,15 @@
         },
         'Mont Blanc Shake': { 
             'Liquid Creamer': 65.0, 
-            'Arabica Coffee Beans 1000gr': 20.16, 
+            'Arabica Coffee Beans 1000gr': 4.3826,          // 6300gr Base Arabica x (320/4600) / 100
             'Brown Sugar 5000 Gr': 8.0, 
-            'Granulated Sugar 50000gr': 12.0, 
+            'Granulated Sugar 50000gr': 6.0,                // 1200gr Simpel Syrup x 0.5 / 100
             'Orange Valencia NFC': 32.0 
         },
         'Vanilla Latte': { 
             'Susu UHT Diamond 1000ml': 91.0, 
             'Syrup Vanilla': 22.5, 
-            'Robusta Coffee Beans 1000gr': 24.2725 
+            'Robusta Coffee Beans 1000gr': 5.2766           // 6650gr Base Robusta x (365/4600) / 100
         }
     };
 
