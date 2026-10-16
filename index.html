@@ -236,6 +236,15 @@
 <script>
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec';
 
+    // LIST PRODUK YANG INGIN DISEMBUNYIKAN/DIABAIKAN DARI TABEL & ANALISIS
+    const excludedProducts = [
+        'hojicha', 
+        'jago black coffee', 
+        'jago cakep', 
+        'jagoan kat', 
+        'jago ngopi'
+    ];
+
     // MASTER BAHAN BAKU, KONVERSI & LEAD TIME (HARI KERJA SENIN - JUMAT)
     const masterBahanBaku = {
         'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 10 },
@@ -324,7 +333,7 @@
         while (added < days) {
             result.setDate(result.getDate() + 1);
             let dayOfWeek = result.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip Minggu (0) & Sabtu (6)
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
                 added++;
             }
         }
@@ -336,7 +345,6 @@
         if (!tbody) return;
         tbody.innerHTML = "";
 
-        // Hitung Kebutuhan per Minggu (Minggu 1 - 5) dalam Gram/ML
         let kebutuhanPerMinggu = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {} };
         for(let m = 1; m <= 5; m++) {
             Object.keys(masterBahanBaku).forEach(b => kebutuhanPerMinggu[m][b] = 0);
@@ -352,6 +360,9 @@
                 let soldCup = parseInt(row[4]) || 0;
 
                 if (tglStr && pName && soldCup > 0) {
+                    let cleanName = pName.toString().trim().toLowerCase();
+                    if (excludedProducts.some(ex => cleanName.includes(ex))) return;
+
                     let currDate = new Date(tglStr);
                     let diffDays = Math.floor((currDate - startDate) / (1000 * 60 * 60 * 24));
                     let weekIdx = Math.min(Math.floor(diffDays / 7) + 1, 5);
@@ -383,7 +394,6 @@
             let totalKebutuhan = m1 + m2 + m3 + m4 + m5;
             let stokFisik = parseFloat(stokGudangUser[bahan]) || 0;
 
-            // Kebutuhan harian berbasis 5 hari kerja per minggu (total 25 hari kerja)
             let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / 25) : 0;
             let coverHari = kebutuhanHarian > 0 ? (stokFisik / kebutuhanHarian) : 0;
             let coverMinggu = coverHari / 5;
@@ -391,7 +401,6 @@
             let leadTime = meta.leadTime || 3;
             let safetyStock = kebutuhanHarian * leadTime;
 
-            // Hitung estimasi tanggal stock out berdasarkan hari kerja
             let dateStockOut = addBusinessDays(today, Math.floor(coverHari));
             let strStockOut = dateStockOut.toISOString().split('T')[0];
 
@@ -452,7 +461,6 @@
                 let workbook = XLSX.read(data, { type: 'array' });
                 let worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 
-                // Mendorong pembacaan baik pola Header maupun pola Baris-Kolom Fisik
                 let rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                 let rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
@@ -460,7 +468,6 @@
                 Object.keys(masterBahanBaku).forEach(b => tempAggregat[b] = 0);
                 let itemFoundCount = 0;
 
-                // Pendekatan 1: Membaca Objek JSON Berdasarkan Header
                 rawJson.forEach(row => {
                     let prodName = "";
                     let stockQty = 0;
@@ -515,7 +522,6 @@
                     }
                 });
 
-                // Pendekatan 2 (Fallback jika header terlampau kompleks): Scan Seluruh Baris Matriks
                 if (itemFoundCount === 0 && rawMatrix.length > 0) {
                     for (let r = 0; r < rawMatrix.length; r++) {
                         let row = rawMatrix[r];
@@ -549,7 +555,6 @@
                                 else if (bahanMaster === 'Syrup Vanilla' && cleanCell.includes('vanilla')) isMatch = true;
 
                                 if (isMatch) {
-                                    // Ambil angka dari kolom-kolom sebelah kanannya
                                     let stockQty = 0;
                                     for (let nextC = c + 1; nextC < row.length; nextC++) {
                                         let parsed = parseFloat(row[nextC]);
@@ -1025,6 +1030,11 @@
         data.forEach(row => {
             let nama = row[0], tgl = normalizeToISO(row[2]), produk = row[3], sold = parseInt(row[4]) || 0, waste = parseInt(row[6]) || 0, leftover = parseInt(row[7]) || 0;
             if(!nama || !tgl || !produk) return;
+
+            // FILTER: ABAIKAN PRODUK YANG DICORET / TIDAK AKTIF
+            let cleanProd = produk.toString().trim().toLowerCase();
+            if (excludedProducts.some(ex => cleanProd.includes(ex))) return;
+
             setTanggal.add(tgl); setProduk.add(produk);
             rankSales[nama] = (rankSales[nama] || 0) + sold;
             rankLeftover[nama] = (rankLeftover[nama] || 0) + leftover;
