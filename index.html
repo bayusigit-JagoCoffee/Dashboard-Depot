@@ -262,6 +262,7 @@
         'Condensed Milk Carnation': { konversiGr: 16000, satuan: 'Box', leadTime: 5 },
         'Garam Gurih Miwon 500gr': { konversiGr: 500, satuan: 'Pack', leadTime: 7 },
         'Granulated Sugar 50000gr': { konversiGr: 50000, satuan: 'Sack', leadTime: 5 },
+        'Grenadine Syrup': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
         'Lemon Extract 1000ml': { konversiGr: 1000, satuan: 'Botol', leadTime: 7 },
         'Lemon Puree 5000ml': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
         'Liquid Creamer': { konversiGr: 1000, satuan: 'Pcs', leadTime: 14 },
@@ -277,6 +278,12 @@
 
     // STANDAR RESEP BOM PER 1 CUP PRODUK (PRESISI SESUAI FOTO RESEP TERBARU)
     const resepBahanBakuPerCup = {
+        'Cherry Americano': { 
+            'Grenadine Syrup': 23.0, 
+            'Granulated Sugar 50000gr': 5.0, 
+            'Arabica Coffee Beans 1000gr': 142.0, 
+            'Garam Gurih Miwon 500gr': 0.2 
+        },
         'Kopi Susu JAGO': { 
             'Melcreamer 25000gr': 12.5, 
             'Aren Sugar': 12.5, 
@@ -491,7 +498,6 @@
                 let workbook = XLSX.read(data, { type: 'array' });
                 let worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 
-                // Konversi sheet ke matriks array 2D
                 let matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
                 
                 if (!matrix || matrix.length === 0) {
@@ -499,7 +505,6 @@
                     return;
                 }
 
-                // Cari baris header yang berisi "Product Name" atau "Nama"
                 let headerRowIdx = -1;
                 let colIdxProduct = -1;
                 let colIdxQty = -1;
@@ -519,12 +524,11 @@
                     if (colIdxProduct !== -1 && colIdxQty !== -1) break;
                 }
 
-                // Jika header standar tidak ditemukan, coba pencarian otomatis per baris
                 let sumifResults = {};
                 Object.keys(masterBahanBaku).forEach(b => sumifResults[b] = 0);
                 let totalRowMatched = 0;
 
-                // Pemetaan Kriteria Persis (SUMIF Exact Match) untuk Seluruh 18 Bahan Baku Master
+                // Pemetaan Kriteria Persis (SUMIF Exact Match) untuk Seluruh 19 Bahan Baku Master
                 const exactCriteriaMap = [
                     { master: 'Arabica Coffee Beans 1000gr', keys: ['arabica coffee beans 1000gr', 'arabica 1000gr', 'arabica 1000 gr'] },
                     { master: 'Robusta Coffee Beans 1000gr', keys: ['robusta coffee beans 1000gr', 'robusta 1000gr', 'robusta 1000 gr'] },
@@ -534,6 +538,7 @@
                     { master: 'Condensed Milk Carnation', keys: ['condensed milk carnation', 'condensed milk'] },
                     { master: 'Garam Gurih Miwon 500gr', keys: ['garam gurih miwon 500gr', 'garam gurih miwon'] },
                     { master: 'Granulated Sugar 50000gr', keys: ['granulated sugar 50000gr', 'granulated sugar', 'gula pasir'] },
+                    { master: 'Grenadine Syrup', keys: ['grenadine syrup', 'grenadine', 'sirup grenadine'] },
                     { master: 'Lemon Extract 1000ml', keys: ['lemon extract 1000ml', 'lemon extract'] },
                     { master: 'Lemon Puree 5000ml', keys: ['lemon puree 5000ml', 'lemon puree'] },
                     { master: 'Liquid Creamer', keys: ['liquid creamer'] },
@@ -572,7 +577,6 @@
                         let parsed = parseFloat(row[colIdxQty]);
                         if (!isNaN(parsed) && parsed > 0) stockQty = parsed;
                     } else {
-                        // Fallback scan sel dalam baris
                         for (let c = 0; c < row.length; c++) {
                             let cellVal = row[c] ? row[c].toString().trim() : "";
                             if (!cellVal) continue;
@@ -594,9 +598,9 @@
                     if (prodName && stockQty > 0) {
                         let matchedMaster = evaluateSumIf(prodName);
                         if (matchedMaster) {
-                            // Konversi satuan khusus
                             if (matchedMaster === 'Syrup Salted Caramel') sumifResults[matchedMaster] += (stockQty / 5000);
                             else if (matchedMaster === 'Syrup Vanilla') sumifResults[matchedMaster] += (stockQty / 6960);
+                            else if (matchedMaster === 'Grenadine Syrup') sumifResults[matchedMaster] += (stockQty / 5000);
                             else if (matchedMaster === 'Susu UHT Diamond 1000ml') sumifResults[matchedMaster] += (stockQty / 12);
                             else sumifResults[matchedMaster] += stockQty;
 
@@ -620,7 +624,9 @@
             }
         };
     }
+
     const masterProdukRules = [
+        { name: 'Cherry Americano', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 110, status: 'medium' },
         { name: 'Citrus Cold Brew', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 110, status: 'medium' },
         { name: 'Pink Coco Lemonade', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 100, status: 'low' },
         { name: 'JAGO Americano', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 110, status: 'medium' },
