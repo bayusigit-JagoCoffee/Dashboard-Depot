@@ -194,7 +194,7 @@
 <!-- MODE 4: RAW MATERIALS (MATRIKS 18 KOLOM) -->
 <div id="sectionMaterials" class="container" style="display:none; max-width: 1400px;">
     <h2>🧪 Stok Bahan Baku Gudang & Matriks Kebutuhan Persediaan</h2>
-    <p style="font-size:13px; color:#555;">Kebutuhan per minggu (M1 - M5) dihitung otomatis dari historis pemakaian penjualan (BOM Multi-Level). Kebutuhan harian berbasis minggu yang SUDAH SELESAI (6 HK/Minggu Selesai).</p>
+    <p style="font-size:13px; color:#555;">Kebutuhan per minggu (M1 - M5) dihitung otomatis dari pemakaian penjualan (BOM). Safety Stock menyertakan buffer <b>+35% (Fast Moving)</b> & <b>+20% (Slow Moving)</b>.</p>
     
     <div style="margin-bottom:15px; background:#eef2f5; padding:12px; border-radius:8px; display:flex; align-items:center; gap:15px;">
         <button type="button" class="btn-blue" onclick="document.getElementById('excelStocklistFile').click()">
@@ -218,7 +218,7 @@
                     <th style="width: 6%;">Total Kebutuhan</th>
                     <th style="width: 4%;">Satuan</th>
                     <th style="width: 7%;">Stok Fisik Aktual</th>
-                    <th style="width: 5.5%;">Safety Stock</th>
+                    <th style="width: 5.5%;">Safety Stock (Inc. Buffer)</th>
                     <th style="width: 6%;">Kebutuhan Harian</th>
                     <th style="width: 5.5%;">Cover Hari</th>
                     <th style="width: 5%;">Cover Minggu</th>
@@ -253,27 +253,27 @@
         'ngopi'
     ];
 
-    // MASTER BAHAN BAKU, KONVERSI & LEAD TIME (HARI KERJA SENIN - SABTU = 6 HK/WEEKS)
+    // MASTER BAHAN BAKU, KONVERSI, LEAD TIME & KATEGORI (FAST/SLOW MOVING)
     const masterBahanBaku = {
-        'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 10 },
-        'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg', leadTime: 5 },
-        'Brown Sugar 5000 Gr': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
-        'Choco Powder': { konversiGr: 12000, satuan: 'Box', leadTime: 5 },
-        'Condensed Milk Carnation': { konversiGr: 16000, satuan: 'Box', leadTime: 5 },
-        'Garam Gurih Miwon 500gr': { konversiGr: 500, satuan: 'Pack', leadTime: 7 },
-        'Granulated Sugar 50000gr': { konversiGr: 50000, satuan: 'Sack', leadTime: 5 },
-        'Grenadine Syrup': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
-        'Lemon Extract 1000ml': { konversiGr: 1000, satuan: 'Botol', leadTime: 7 },
-        'Lemon Puree 5000ml': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
-        'Liquid Creamer': { konversiGr: 1000, satuan: 'Pcs', leadTime: 14 },
-        'Matcha Powder Voya 1000 Gr': { konversiGr: 1000, satuan: 'Pack', leadTime: 14 },
-        'Melcreamer 25000gr': { konversiGr: 25000, satuan: 'Sack', leadTime: 5 },
-        'Oatside Barista Blend 1000ml': { konversiGr: 1000, satuan: 'Pcs', leadTime: 3 },
-        'Orange Valencia NFC': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
-        'Robusta Coffee Beans 1000gr': { konversiGr: 5000, satuan: 'Box', leadTime: 10 },
-        'Susu UHT Diamond 1000ml': { konversiGr: 12000, satuan: 'Box', leadTime: 3 },
-        'Syrup Salted Caramel': { konversiGr: 5000, satuan: 'Jrg', leadTime: 5 },
-        'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box', leadTime: 5 }
+        'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 10, category: 'fast' },
+        'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg', leadTime: 5, category: 'fast' },
+        'Brown Sugar 5000 Gr': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7, category: 'slow' },
+        'Choco Powder': { konversiGr: 12000, satuan: 'Box', leadTime: 5, category: 'slow' },
+        'Condensed Milk Carnation': { konversiGr: 16000, satuan: 'Box', leadTime: 5, category: 'fast' },
+        'Garam Gurih Miwon 500gr': { konversiGr: 500, satuan: 'Pack', leadTime: 7, category: 'slow' },
+        'Granulated Sugar 50000gr': { konversiGr: 50000, satuan: 'Sack', leadTime: 5, category: 'fast' },
+        'Grenadine Syrup': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7, category: 'slow' },
+        'Lemon Extract 1000ml': { konversiGr: 1000, satuan: 'Botol', leadTime: 7, category: 'slow' },
+        'Lemon Puree 5000ml': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7, category: 'slow' },
+        'Liquid Creamer': { konversiGr: 1000, satuan: 'Pcs', leadTime: 14, category: 'slow' },
+        'Matcha Powder Voya 1000 Gr': { konversiGr: 1000, satuan: 'Pack', leadTime: 14, category: 'slow' },
+        'Melcreamer 25000gr': { konversiGr: 25000, satuan: 'Sack', leadTime: 5, category: 'fast' },
+        'Oatside Barista Blend 1000ml': { konversiGr: 1000, satuan: 'Pcs', leadTime: 3, category: 'fast' },
+        'Orange Valencia NFC': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7, category: 'slow' },
+        'Robusta Coffee Beans 1000gr': { konversiGr: 5000, satuan: 'Box', leadTime: 10, category: 'fast' },
+        'Susu UHT Diamond 1000ml': { konversiGr: 12000, satuan: 'Box', leadTime: 3, category: 'fast' },
+        'Syrup Salted Caramel': { konversiGr: 5000, satuan: 'Jrg', leadTime: 5, category: 'slow' },
+        'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box', leadTime: 5, category: 'slow' }
     };
 
     // STANDAR RESEP BOM PER 1 CUP PRODUK (PRESISI SESUAI FOTO RESEP TERBARU)
@@ -426,7 +426,8 @@
             let m5 = (kebutuhanPerMinggu[5][bahan] || 0) / meta.konversiGr;
 
             let totalKebutuhan = m1 + m2 + m3 + m4 + m5;
-            let stokFisik = parseFloat(stokGudangUser[bahan]) || 0;
+            let stokFisik = parseFloat(stokGudangUser[bahan]);
+            if (isNaN(stokFisik) || stokFisik < 0) stokFisik = 0;
 
             // DETEKSI MINGGU BERJALAN AKTIF
             let mingguBerjalan = 0;
@@ -436,7 +437,7 @@
             if (m4 > 0) mingguBerjalan = 4;
             if (m5 > 0) mingguBerjalan = 5;
 
-            // LOGIKA BARU: HANYA HITUNG MINGGU YANG SUDAH SELESAI PENUH (mingguBerjalan - 1)
+            // MINGGU SELESAI PENUH (mingguBerjalan - 1) DENGAN MINIMAL PEMBAGI 1 MINGGU (6 HK)
             let mingguSelesai = Math.max(1, mingguBerjalan - 1);
             let totalHariKerjaPembagi = mingguSelesai * 6; // 6 Hari Kerja/Minggu Selesai
 
@@ -445,7 +446,11 @@
             let coverMinggu = coverHari / 6;
 
             let leadTime = meta.leadTime || 3;
-            let safetyStock = kebutuhanHarian * leadTime;
+            let baseSafetyStock = kebutuhanHarian * leadTime;
+
+            // RUMUS SAFETY STOCK BARU: INC. BUFFER (+35% FAST, +20% SLOW)
+            let bufferRate = meta.category === 'fast' ? 0.35 : 0.20;
+            let safetyStock = baseSafetyStock * (1 + bufferRate);
 
             let dateStockOut = addBusinessDays(today, Math.floor(coverHari));
             let strStockOut = dateStockOut.toISOString().split('T')[0];
@@ -461,10 +466,12 @@
                 statusBadge = `<span style="background-color:#2ecc71; color:white; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🟢 Aman</span>`;
             }
 
+            let catLabel = meta.category === 'fast' ? '<small style="color:#e67e22; font-weight:bold;">[Fast +35%]</small>' : '<small style="color:#7f8c8d;">[Slow +20%]</small>';
+
             let rowHtml = `
                 <tr>
                     <td><b>${no++}</b></td>
-                    <td class="text-left">${bahan}</td>
+                    <td class="text-left">${bahan} <br>${catLabel}</td>
                     <td>${m1.toFixed(2)}</td>
                     <td>${m2.toFixed(2)}</td>
                     <td>${m3.toFixed(2)}</td>
@@ -475,7 +482,7 @@
                     <td>
                         <input type="number" value="${stokFisik.toFixed(2)}" min="0" step="0.1" style="width:65px; text-align:center; font-weight:bold;" oninput="stokGudangUser['${bahan}']=parseFloat(this.value)||0; renderTabelBahanBakuDirect();" />
                     </td>
-                    <td>${safetyStock.toFixed(2)}</td>
+                    <td><b style="color:#d35400;">${safetyStock.toFixed(2)}</b></td>
                     <td>${kebutuhanHarian.toFixed(2)}</td>
                     <td><b>${coverHari.toFixed(1)} HK</b></td>
                     <td>${coverMinggu.toFixed(1)} Mgg</td>
