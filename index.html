@@ -237,13 +237,21 @@
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec';
 
     // LIST PRODUK YANG INGIN DISEMBUNYIKAN/DIABAIKAN DARI TABEL & ANALISIS
-const excludedProducts = [
-    'hojicha lychee tea',
-    'jago black coffee',
-    'jagoan cakep',
-    'jagoan kilat',
-    'jagoan ngopi',
-];
+    const excludedProducts = [
+        'hojicha',
+        'hojicha lychee tea',
+        'jago black coffee',
+        'jago black',
+        'jago cakep',
+        'jagoan cakep',
+        'jagoan kat',
+        'jagoan kilat',
+        'jago ngopi',
+        'jagoan ngopi',
+        'cakep',
+        'kilat',
+        'ngopi'
+    ];
 
     // MASTER BAHAN BAKU, KONVERSI & LEAD TIME (HARI KERJA SENIN - JUMAT)
     const masterBahanBaku = {
@@ -325,6 +333,29 @@ const excludedProducts = [
     };
 
     let stokGudangUser = {};
+
+    // FUNGSI UNTUK SET RENTANG TANGGAL BULAN BERJALAN (TGL 1 S/D HARI INI)
+    function setRentangDefaultBulanIni() {
+        let now = new Date();
+        let year = now.getFullYear();
+        let month = String(now.getMonth() + 1).padStart(2, '0');
+        let day = String(now.getDate()).padStart(2, '0');
+
+        let firstDayStr = `${year}-${month}-01`;
+        let todayStr = `${year}-${month}-${day}`;
+
+        // Set input filter sales
+        let salesAwal = document.getElementById('tglAwalSales');
+        let salesAkhir = document.getElementById('tglAkhirSales');
+        if (salesAwal) salesAwal.value = firstDayStr;
+        if (salesAkhir) salesAkhir.value = todayStr;
+
+        // Set input filter supplies
+        let suppliesAwal = document.getElementById('tglAwalSupplies');
+        let suppliesAkhir = document.getElementById('tglAkhirSupplies');
+        if (suppliesAwal) suppliesAwal.value = firstDayStr;
+        if (suppliesAkhir) suppliesAkhir.value = todayStr;
+    }
 
     // FUNGSI PEMBANTU MENAMBAHKAN HARI KERJA (SENIN - JUMAT SAJA)
     function addBusinessDays(startDate, days) {
@@ -692,7 +723,10 @@ const excludedProducts = [
         evt.currentTarget.classList.add("active");
     }
 
-    window.onload = function() { tarikData(); };
+    window.onload = function() { 
+        setRentangDefaultBulanIni(); 
+        tarikData(); 
+    };
 
     function tarikData() {
         let tbodySales = document.querySelector("#tblRankSales tbody");
@@ -711,9 +745,9 @@ const excludedProducts = [
                 rawSuppliesData = data.dataSupplies || [];
                 rawStokDepotData = data.dataStok || [];
                 
-                prosesDanTampilkanSales(rawSalesData);
-                filteredSuppliesData = rawSuppliesData;
-                prosesDanTampilkanSupplies(rawSuppliesData);
+                // OTOMATIS FILTER SESUAI RENTANG TANGGAL BULAN BERJALAN SAAT DIBUKA
+                terapkanFilterSales();
+                terapkanFilterSupplies();
             } else {
                 alert("Gagal memuat data: " + (data.pesan || "Terjadi kesalahan server"));
             }
@@ -1031,7 +1065,7 @@ const excludedProducts = [
             let nama = row[0], tgl = normalizeToISO(row[2]), produk = row[3], sold = parseInt(row[4]) || 0, waste = parseInt(row[6]) || 0, leftover = parseInt(row[7]) || 0;
             if(!nama || !tgl || !produk) return;
 
-            // FILTER: ABAIKAN PRODUK YANG DICORET / TIDAK AKTIF
+            // FILTER KETAT: ABAIKAN PRODUK YANG DICORET ATU TIDAK DIBUTUHKAN
             let cleanProd = produk.toString().trim().toLowerCase();
             if (excludedProducts.some(ex => cleanProd.includes(ex))) return;
 
