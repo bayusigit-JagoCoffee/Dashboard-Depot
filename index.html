@@ -194,7 +194,7 @@
 <!-- MODE 4: RAW MATERIALS (MATRIKS 18 KOLOM) -->
 <div id="sectionMaterials" class="container" style="display:none; max-width: 1400px;">
     <h2>🧪 Stok Bahan Baku Gudang & Matriks Kebutuhan Persediaan</h2>
-    <p style="font-size:13px; color:#555;">Kebutuhan per minggu (M1 - M5) dihitung otomatis dari historis pemakaian penjualan (BOM Multi-Level).</p>
+    <p style="font-size:13px; color:#555;">Kebutuhan per minggu (M1 - M5) dihitung otomatis dari historis pemakaian penjualan (BOM Multi-Level). Kebutuhan harian berbasis minggu yang SUDAH SELESAI (6 HK/Minggu Selesai).</p>
     
     <div style="margin-bottom:15px; background:#eef2f5; padding:12px; border-radius:8px; display:flex; align-items:center; gap:15px;">
         <button type="button" class="btn-blue" onclick="document.getElementById('excelStocklistFile').click()">
@@ -253,7 +253,7 @@
         'ngopi'
     ];
 
-    // MASTER BAHAN BAKU, KONVERSI & LEAD TIME (HARI KERJA SENIN - JUMAT)
+    // MASTER BAHAN BAKU, KONVERSI & LEAD TIME (HARI KERJA SENIN - SABTU = 6 HK/WEEKS)
     const masterBahanBaku = {
         'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 10 },
         'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg', leadTime: 5 },
@@ -341,7 +341,6 @@
 
     let stokGudangUser = {};
 
-    // FUNGSI UNTUK SET RENTANG TANGGAL BULAN BERJALAN (TGL 1 S/D HARI INI)
     function setRentangDefaultBulanIni() {
         let now = new Date();
         let year = now.getFullYear();
@@ -362,7 +361,6 @@
         if (suppliesAkhir) suppliesAkhir.value = todayStr;
     }
 
-    // FUNGSI PEMBANTU MENAMBAHKAN HARI KERJA (SENIN - JUMAT SAJA)
     function addBusinessDays(startDate, days) {
         let result = new Date(startDate);
         let added = 0;
@@ -430,9 +428,21 @@
             let totalKebutuhan = m1 + m2 + m3 + m4 + m5;
             let stokFisik = parseFloat(stokGudangUser[bahan]) || 0;
 
-            let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / 25) : 0;
+            // DETEKSI MINGGU BERJALAN AKTIF
+            let mingguBerjalan = 0;
+            if (m1 > 0) mingguBerjalan = 1;
+            if (m2 > 0) mingguBerjalan = 2;
+            if (m3 > 0) mingguBerjalan = 3;
+            if (m4 > 0) mingguBerjalan = 4;
+            if (m5 > 0) mingguBerjalan = 5;
+
+            // LOGIKA BARU: HANYA HITUNG MINGGU YANG SUDAH SELESAI PENUH (mingguBerjalan - 1)
+            let mingguSelesai = Math.max(1, mingguBerjalan - 1);
+            let totalHariKerjaPembagi = mingguSelesai * 6; // 6 Hari Kerja/Minggu Selesai
+
+            let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / totalHariKerjaPembagi) : 0;
             let coverHari = kebutuhanHarian > 0 ? (stokFisik / kebutuhanHarian) : 0;
-            let coverMinggu = coverHari / 5;
+            let coverMinggu = coverHari / 6;
 
             let leadTime = meta.leadTime || 3;
             let safetyStock = kebutuhanHarian * leadTime;
@@ -479,7 +489,6 @@
         }
     }
 
-    // FUNGSI IMPORT STOCKLIST EXCEL/CSV DENGAN METODE SUMIF & AUTO-SKIP HEADER LAPORAN
     function handleImportStocklist(inputElem) {
         let file = inputElem ? inputElem.files[0] : null;
         if (!file) return;
@@ -528,7 +537,6 @@
                 Object.keys(masterBahanBaku).forEach(b => sumifResults[b] = 0);
                 let totalRowMatched = 0;
 
-                // Pemetaan Kriteria Persis (SUMIF Exact Match) untuk Seluruh 19 Bahan Baku Master
                 const exactCriteriaMap = [
                     { master: 'Arabica Coffee Beans 1000gr', keys: ['arabica coffee beans 1000gr', 'arabica 1000gr', 'arabica 1000 gr'] },
                     { master: 'Robusta Coffee Beans 1000gr', keys: ['robusta coffee beans 1000gr', 'robusta 1000gr', 'robusta 1000 gr'] },
