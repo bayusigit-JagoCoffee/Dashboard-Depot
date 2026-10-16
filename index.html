@@ -197,10 +197,10 @@
     <p style="font-size:13px; color:#555;">Kebutuhan per minggu (M1 - M5) dihitung otomatis dari historis pemakaian penjualan (BOM Multi-Level).</p>
     
     <div style="margin-bottom:15px; background:#eef2f5; padding:12px; border-radius:8px; display:flex; align-items:center; gap:15px;">
-        <label class="btn-blue" style="margin:0; font-size:13px; cursor:pointer;">
+        <button type="button" class="btn-blue" onclick="document.getElementById('excelStocklistFile').click()">
             📂 Auto-Import Stocklist Excel/CSV Gudang
-            <input type="file" id="excelStocklistFile" onchange="handleImportStocklist(this)" style="display:none;" />
-        </label>
+        </button>
+        <input type="file" id="excelStocklistFile" accept=".xlsx, .xls, .csv" onchange="handleImportStocklist(this)" style="display:none;" />
         <span style="font-size:12px; color:#666;">*Unggah file stocklist Excel untuk mengisi & mengonversi stok fisik aktual otomatis.</span>
     </div>
 
