@@ -222,7 +222,7 @@
                     <th style="width: 6%;">Kebutuhan Harian</th>
                     <th style="width: 5.5%;">Cover Hari</th>
                     <th style="width: 5%;">Cover Minggu</th>
-                    <th style="width: 5%;">Lead Time (Hari)</th>
+                    <th style="width: 5%;">Lead Time (Hari Kerja)</th>
                     <th style="width: 7%;">Estimasi Stock Out</th>
                     <th style="width: 8%;">Kurang Beli / Saran Belanja</th>
                     <th style="width: 7%;">Status</th>
@@ -236,41 +236,41 @@
 <script>
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec';
 
-    // MASTER BAHAN BAKU & KONVERSI & LEAD TIME
+    // MASTER BAHAN BAKU, KONVERSI & LEAD TIME (HARI KERJA SENIN - JUMAT)
     const masterBahanBaku = {
-        'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 3 },
-        'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg', leadTime: 2 },
-        'Brown Sugar 5000 Gr': { konversiGr: 5000, satuan: 'Jrg', leadTime: 2 },
-        'Choco Powder': { konversiGr: 12000, satuan: 'Box', leadTime: 3 },
-        'Condensed Milk Carnation': { konversiGr: 16000, satuan: 'Box', leadTime: 2 },
-        'Garam Gurih Miwon 500gr': { konversiGr: 500, satuan: 'Pack', leadTime: 2 },
-        'Granulated Sugar 50000gr': { konversiGr: 50000, satuan: 'Sack', leadTime: 2 },
-        'Lemon Extract 1000ml': { konversiGr: 1000, satuan: 'Botol', leadTime: 3 },
-        'Lemon Puree 5000ml': { konversiGr: 5000, satuan: 'Jrg', leadTime: 3 },
-        'Liquid Creamer': { konversiGr: 1000, satuan: 'Pcs', leadTime: 2 },
-        'Matcha Powder Voya 1000 Gr': { konversiGr: 1000, satuan: 'Pack', leadTime: 3 },
-        'Melcreamer 25000gr': { konversiGr: 25000, satuan: 'Sack', leadTime: 3 },
-        'Oatside Barista Blend 1000ml': { konversiGr: 1000, satuan: 'Pcs', leadTime: 2 },
-        'Orange Valencia NFC': { konversiGr: 5000, satuan: 'Jrg', leadTime: 3 },
-        'Robusta Coffee Beans 1000gr': { konversiGr: 5000, satuan: 'Box', leadTime: 3 },
-        'Susu UHT Diamond 1000ml': { konversiGr: 12000, satuan: 'Box', leadTime: 2 },
-        'Syrup Salted Caramel': { konversiGr: 5000, satuan: 'Jrg', leadTime: 3 },
-        'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box', leadTime: 3 }
+        'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 10 },
+        'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg', leadTime: 5 },
+        'Brown Sugar 5000 Gr': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
+        'Choco Powder': { konversiGr: 12000, satuan: 'Box', leadTime: 5 },
+        'Condensed Milk Carnation': { konversiGr: 16000, satuan: 'Box', leadTime: 5 },
+        'Garam Gurih Miwon 500gr': { konversiGr: 500, satuan: 'Pack', leadTime: 7 },
+        'Granulated Sugar 50000gr': { konversiGr: 50000, satuan: 'Sack', leadTime: 5 },
+        'Lemon Extract 1000ml': { konversiGr: 1000, satuan: 'Botol', leadTime: 7 },
+        'Lemon Puree 5000ml': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
+        'Liquid Creamer': { konversiGr: 1000, satuan: 'Pcs', leadTime: 14 },
+        'Matcha Powder Voya 1000 Gr': { konversiGr: 1000, satuan: 'Pack', leadTime: 14 },
+        'Melcreamer 25000gr': { konversiGr: 25000, satuan: 'Sack', leadTime: 5 },
+        'Oatside Barista Blend 1000ml': { konversiGr: 1000, satuan: 'Pcs', leadTime: 3 },
+        'Orange Valencia NFC': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7 },
+        'Robusta Coffee Beans 1000gr': { konversiGr: 5000, satuan: 'Box', leadTime: 10 },
+        'Susu UHT Diamond 1000ml': { konversiGr: 12000, satuan: 'Box', leadTime: 3 },
+        'Syrup Salted Caramel': { konversiGr: 5000, satuan: 'Jrg', leadTime: 5 },
+        'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box', leadTime: 5 }
     };
 
     // STANDAR RESEP BOM PER 1 CUP PRODUK (PRESISI SESUAI FOTO RESEP TERBARU)
     const resepBahanBakuPerCup = {
         'Kopi Susu JAGO': { 
             'Melcreamer 25000gr': 12.5, 
-            'Aren Sugar': 12.5,                            // 25000gr Base Kopsu x 0.5 / 1000
-            'Condensed Milk Carnation': 12.5,               // 25000gr Base Kopsu x 0.5 / 1000
-            'Robusta Coffee Beans 1000gr': 5.7527,          // 72500gr Base Robusta x (365/4600) / 1000
+            'Aren Sugar': 12.5, 
+            'Condensed Milk Carnation': 12.5, 
+            'Robusta Coffee Beans 1000gr': 5.7527, 
             'Susu UHT Diamond 1000ml': 70.0 
         },
         'Salted Caramel Latte': { 
             'Syrup Salted Caramel': 18.25, 
-            'Granulated Sugar 50000gr': 4.5,                // 9000gr Simpel Syrup x 0.5 / 1000
-            'Robusta Coffee Beans 1000gr': 6.0701,          // 76500gr Base Robusta x (365/4600) / 1000
+            'Granulated Sugar 50000gr': 4.5, 
+            'Robusta Coffee Beans 1000gr': 6.0701, 
             'Melcreamer 25000gr': 9.0, 
             'Susu UHT Diamond 1000ml': 67.25, 
             'Garam Gurih Miwon 500gr': 0.3 
@@ -279,14 +279,14 @@
             'Matcha Powder Voya 1000 Gr': 18.0, 
             'Melcreamer 25000gr': 22.5, 
             'Susu UHT Diamond 1000ml': 63.5, 
-            'Granulated Sugar 50000gr': 6.0                 // 1200gr Simpel Syrup x 0.5 / 100
+            'Granulated Sugar 50000gr': 6.0 
         },
         'JAGO Americano': { 
-            'Arabica Coffee Beans 1000gr': 12.3826          // 17800gr Base Arabica x (320/4600) / 100
+            'Arabica Coffee Beans 1000gr': 12.3826 
         },
         'Citrus Cold Brew': { 
-            'Arabica Coffee Beans 1000gr': 9.6696,          // 13900gr Base Arabica x (320/4600) / 100
-            'Granulated Sugar 50000gr': 16.0,               // 3200gr Simpel Syrup x 0.5 / 100
+            'Arabica Coffee Beans 1000gr': 9.6696, 
+            'Granulated Sugar 50000gr': 16.0, 
             'Lemon Extract 1000ml': 4.5, 
             'Lemon Puree 5000ml': 4.5 
         },
@@ -294,7 +294,7 @@
             'Oatside Barista Blend 1000ml': 72.5, 
             'Melcreamer 25000gr': 18.0, 
             'Aren Sugar': 15.3, 
-            'Robusta Coffee Beans 1000gr': 5.8876           // 7420gr Base Robusta x (365/4600) / 100
+            'Robusta Coffee Beans 1000gr': 5.8876 
         },
         'JAGO Chocolate': { 
             'Choco Powder': 12.5, 
@@ -303,19 +303,33 @@
         },
         'Mont Blanc Shake': { 
             'Liquid Creamer': 65.0, 
-            'Arabica Coffee Beans 1000gr': 4.3826,          // 6300gr Base Arabica x (320/4600) / 100
+            'Arabica Coffee Beans 1000gr': 4.3826, 
             'Brown Sugar 5000 Gr': 8.0, 
-            'Granulated Sugar 50000gr': 6.0,                // 1200gr Simpel Syrup x 0.5 / 100
+            'Granulated Sugar 50000gr': 6.0, 
             'Orange Valencia NFC': 32.0 
         },
         'Vanilla Latte': { 
             'Susu UHT Diamond 1000ml': 91.0, 
             'Syrup Vanilla': 22.5, 
-            'Robusta Coffee Beans 1000gr': 5.2766           // 6650gr Base Robusta x (365/4600) / 100
+            'Robusta Coffee Beans 1000gr': 5.2766 
         }
     };
 
     let stokGudangUser = {};
+
+    // FUNGSI PEMBANTU MENAMBAHKAN HARI KERJA (SENIN - JUMAT SAJA)
+    function addBusinessDays(startDate, days) {
+        let result = new Date(startDate);
+        let added = 0;
+        while (added < days) {
+            result.setDate(result.getDate() + 1);
+            let dayOfWeek = result.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip Minggu (0) & Sabtu (6)
+                added++;
+            }
+        }
+        return result;
+    }
 
     function renderTabelBahanBakuDirect() {
         let tbody = document.querySelector("#tblRawMaterials tbody");
@@ -346,7 +360,6 @@
                         let resepPerCup = resepBahanBakuPerCup[pName];
                         for (let bahan in resepPerCup) {
                             if (kebutuhanPerMinggu[weekIdx][bahan] !== undefined) {
-                                // Perkalian Presisi: Sold Cup x Gram per Cup
                                 kebutuhanPerMinggu[weekIdx][bahan] += resepPerCup[bahan] * soldCup;
                             }
                         }
@@ -370,15 +383,16 @@
             let totalKebutuhan = m1 + m2 + m3 + m4 + m5;
             let stokFisik = parseFloat(stokGudangUser[bahan]) || 0;
 
-            let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / 35) : 0;
+            // Kebutuhan harian berbasis 5 hari kerja per minggu (total 25 hari kerja)
+            let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / 25) : 0;
             let coverHari = kebutuhanHarian > 0 ? (stokFisik / kebutuhanHarian) : 0;
-            let coverMinggu = coverHari / 7;
+            let coverMinggu = coverHari / 5;
 
             let leadTime = meta.leadTime || 3;
             let safetyStock = kebutuhanHarian * leadTime;
 
-            let dateStockOut = new Date(today);
-            dateStockOut.setDate(dateStockOut.getDate() + Math.floor(coverHari));
+            // Hitung estimasi tanggal stock out berdasarkan hari kerja
+            let dateStockOut = addBusinessDays(today, Math.floor(coverHari));
             let strStockOut = dateStockOut.toISOString().split('T')[0];
 
             let saranBelanja = Math.max(0, (totalKebutuhan + safetyStock) - stokFisik);
@@ -408,9 +422,9 @@
                     </td>
                     <td>${safetyStock.toFixed(2)}</td>
                     <td>${kebutuhanHarian.toFixed(2)}</td>
-                    <td><b>${coverHari.toFixed(1)} Hari</b></td>
+                    <td><b>${coverHari.toFixed(1)} HK</b></td>
                     <td>${coverMinggu.toFixed(1)} Mgg</td>
-                    <td>${leadTime} Hari</td>
+                    <td>${leadTime} HK</td>
                     <td>${strStockOut}</td>
                     <td><b style="color:#c0392b;">${saranBelanja.toFixed(2)} ${meta.satuan}</b></td>
                     <td>${statusBadge}</td>
@@ -598,6 +612,14 @@
     window.onload = function() { tarikData(); };
 
     function tarikData() {
+        let tbodySales = document.querySelector("#tblRankSales tbody");
+        if(tbodySales) tbodySales.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:15px; color:#7f8c8d;">⏳ Memuat data dari Sheets...</td></tr>`;
+
+        if (scriptURL === 'URL_APPS_SCRIPT_ANDA_DI_SINI' || !scriptURL.startsWith('http')) {
+            if(tbodySales) tbodySales.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:15px; color:#e74c3c;">⚠️ Mohon isi scriptURL di index.html terlebih dahulu.</td></tr>`;
+            return;
+        }
+
         fetch(scriptURL)
         .then(res => res.json())
         .then(data => {
@@ -605,10 +627,17 @@
                 rawSalesData = data.dataSales || [];
                 rawSuppliesData = data.dataSupplies || [];
                 rawStokDepotData = data.dataStok || [];
+                
                 prosesDanTampilkanSales(rawSalesData);
                 filteredSuppliesData = rawSuppliesData;
                 prosesDanTampilkanSupplies(rawSuppliesData);
+            } else {
+                alert("Gagal memuat data: " + (data.pesan || "Terjadi kesalahan server"));
             }
+        })
+        .catch(err => {
+            console.error("Fetch Error:", err);
+            if(tbodySales) tbodySales.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:15px; color:#e74c3c;">❌ Gagal koneksi ke Apps Script.</td></tr>`;
         });
     }
 
