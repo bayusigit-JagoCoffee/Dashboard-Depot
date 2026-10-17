@@ -62,6 +62,15 @@
 
         .chart-box { position: relative; height: 320px; width: 100%; margin-bottom: 25px; }
         .radio-upload { display: flex; gap: 20px; justify-content: center; margin-bottom: 15px; font-weight: bold; }
+
+        /* STYLE KHUSUS STOK BEBAS */
+        .instruction-banner { background-color: #000; color: #fff; text-align: center; padding: 10px; font-size: 13px; font-weight: bold; border-radius: 6px; margin-bottom: 15px; letter-spacing: 0.5px; }
+        .input-pink { background-color: #fce4ec; border: 1px solid #f48fb1; text-align: center; font-weight: bold; width: 60px; padding: 6px; border-radius: 4px; }
+        .input-pink:focus { background-color: #fff; outline: 2px solid #ec407a; }
+        .cell-readonly { background-color: #f8f9fa; font-weight: bold; }
+        th.header-blue { background-color: #2980b9; }
+        th.header-darkblue { background-color: #1f3a93; }
+        th.sub-header { background-color: #2c3e50; }
     </style>
 </head>
 <body>
@@ -72,6 +81,7 @@
         <button class="btn-mode" onclick="gantiMode('supplies')">📦 Dashboard Checkout Supplies</button>
         <button class="btn-mode" onclick="gantiMode('planner')">📋 Perencanaan Produksi Harian</button>
         <button class="btn-mode" onclick="gantiMode('materials')">🧪 Stok Bahan Baku & Restock</button>
+        <button class="btn-mode" onclick="gantiMode('stokBebas')">📝 Hitungan Stok Bebas & On Hand</button>
     </div>
 
     <div id="sectionUpload">
@@ -91,7 +101,7 @@
     </div>
 </div>
 
-<!-- MODE 1 -->
+<!-- MODE 1: SALES -->
 <div id="sectionSales" class="container">
     <h2>Dashboard Analisis Penjualan & Waste</h2>
     <div class="filter-box">
@@ -129,7 +139,7 @@
     </div>
 </div>
 
-<!-- MODE 2 -->
+<!-- MODE 2: SUPPLIES -->
 <div id="sectionSupplies" class="container" style="display:none;">
     <h2>Dashboard Checkout Supplies Jagoan</h2>
     <div class="filter-box">
@@ -160,7 +170,7 @@
     </div>
 </div>
 
-<!-- MODE 3 -->
+<!-- MODE 3: PLANNER -->
 <div id="sectionPlanner" class="container" style="display:none;">
     <h2>📋 Daily Production Planner & Analisis Stok Depot</h2>
     <div class="filter-box">
@@ -191,7 +201,7 @@
     <div id="pesanStok" class="pesan"></div>
 </div>
 
-<!-- MODE 4: RAW MATERIALS (MATRIKS 18 KOLOM) -->
+<!-- MODE 4: RAW MATERIALS -->
 <div id="sectionMaterials" class="container" style="display:none; max-width: 1400px;">
     <h2>🧪 Stok Bahan Baku Gudang & Matriks Kebutuhan Persediaan</h2>
     <p style="font-size:13px; color:#555;">Kebutuhan per minggu (M1 - M5) dihitung otomatis dari pemakaian penjualan (BOM). Safety Stock menyertakan buffer <b>+35% (Fast Moving)</b> & <b>+20% (Slow Moving)</b>.</p>
@@ -233,27 +243,71 @@
     </div>
 </div>
 
+<!-- MODE 5: STOK BEBAS & ON HAND (DARI SHEET HITUNGAN) -->
+<div id="sectionStokBebas" class="container" style="display:none;">
+    <h2>📝 Hitungan Stok Bebas & On Hand</h2>
+
+    <div class="filter-box">
+        <div class="filter-group">
+            <label for="tglHitungan">Tanggal:</label>
+            <input type="date" id="tglHitungan" />
+        </div>
+        <div class="filter-group">
+            <label for="shiftHitungan">Pagi / Malam:</label>
+            <select id="shiftHitungan">
+                <option value="Pagi">Pagi</option>
+                <option value="Malam">Malam</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="picName">Nama PIC:</label>
+            <input type="text" id="picName" placeholder="Ketik Nama PIC..." />
+        </div>
+    </div>
+
+    <div class="instruction-banner">
+        TULIS ANGKA DI KOLOM PINK SAJA LALU KLIK UPDATE
+    </div>
+
+    <div class="table-wrapper">
+        <table id="tblStokBebas">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="text-left" style="width: 20%;">Product Name</th>
+                    <th colspan="3" class="header-blue">STOCK BEBAS</th>
+                    <th colspan="3" class="header-darkblue">LEFTOVER</th>
+                    <th class="sub-header">TOTAL ON HAND</th>
+                    <th colspan="2" class="header-blue">EVENT</th>
+                </tr>
+                <tr>
+                    <th style="width: 8%;">Tray</th>
+                    <th style="width: 8%;">Pcs</th>
+                    <th style="width: 8%;">Total</th>
+                    <th style="width: 8%;">Tray</th>
+                    <th style="width: 8%;">Pcs</th>
+                    <th style="width: 8%;">Total</th>
+                    <th style="width: 10%;">Total</th>
+                    <th style="width: 8%;">Pcs</th>
+                    <th style="width: 10%;">Available Stock</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <button class="btn-green" id="btnUpdateStokBebas" onclick="simpanStokBebas()" style="margin-top:20px; padding:14px; font-size:16px;">🚀 UPDATE & SIMPAN KE SPREADSHEET PUSAT</button>
+    <div id="pesanNotifStokBebas" class="pesan"></div>
+</div>
+
 <script>
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwNwdO1EHEVptYCxX4lPJjbBLuKYd5pXF3QhwuzMAfm1xYcn2QI1Dn6rFWYTPhE69kI/exec';
 
-    // LIST PRODUK YANG INGIN DISEMBUNYIKAN/DIABAIKAN DARI TABEL & ANALISIS
     const excludedProducts = [
-        'hojicha',
-        'hojicha lychee tea',
-        'jago black coffee',
-        'jago black',
-        'jago cakep',
-        'jagoan cakep',
-        'jagoan kat',
-        'jagoan kilat',
-        'jago ngopi',
-        'jagoan ngopi',
-        'cakep',
-        'kilat',
-        'ngopi'
+        'hojicha', 'hojicha lychee tea', 'jago black coffee', 'jago black', 'jago cakep',
+        'jagoan cakep', 'jagoan kat', 'jagoan kilat', 'jago ngopi', 'jagoan ngopi',
+        'cakep', 'kilat', 'ngopi'
     ];
 
-    // MASTER BAHAN BAKU, KONVERSI, LEAD TIME & KATEGORI (FAST/SLOW MOVING)
     const masterBahanBaku = {
         'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 10, category: 'fast' },
         'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg', leadTime: 5, category: 'fast' },
@@ -276,68 +330,33 @@
         'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box', leadTime: 5, category: 'slow' }
     };
 
-    // STANDAR RESEP BOM PER 1 CUP PRODUK (PRESISI SESUAI FOTO RESEP TERBARU)
     const resepBahanBakuPerCup = {
-        'Cherry Americano': { 
-            'Grenadine Syrup': 23.0, 
-            'Granulated Sugar 50000gr': 5.0, 
-            'Arabica Coffee Beans 1000gr': 142.0, 
-            'Garam Gurih Miwon 500gr': 0.2 
-        },
-        'Kopi Susu JAGO': { 
-            'Melcreamer 25000gr': 12.5, 
-            'Aren Sugar': 12.5, 
-            'Condensed Milk Carnation': 12.5, 
-            'Robusta Coffee Beans 1000gr': 5.7527, 
-            'Susu UHT Diamond 1000ml': 70.0 
-        },
-        'Salted Caramel Latte': { 
-            'Syrup Salted Caramel': 18.25, 
-            'Granulated Sugar 50000gr': 4.5, 
-            'Robusta Coffee Beans 1000gr': 6.0701, 
-            'Melcreamer 25000gr': 9.0, 
-            'Susu UHT Diamond 1000ml': 67.25, 
-            'Garam Gurih Miwon 500gr': 0.3 
-        },
-        'Matcha Latte': { 
-            'Matcha Powder Voya 1000 Gr': 18.0, 
-            'Melcreamer 25000gr': 22.5, 
-            'Susu UHT Diamond 1000ml': 63.5, 
-            'Granulated Sugar 50000gr': 6.0 
-        },
-        'JAGO Americano': { 
-            'Arabica Coffee Beans 1000gr': 12.3826 
-        },
-        'Citrus Cold Brew': { 
-            'Arabica Coffee Beans 1000gr': 9.6696, 
-            'Granulated Sugar 50000gr': 16.0, 
-            'Lemon Extract 1000ml': 4.5, 
-            'Lemon Puree 5000ml': 4.5 
-        },
-        'Kopi Susu Oatside': { 
-            'Oatside Barista Blend 1000ml': 72.5, 
-            'Melcreamer 25000gr': 18.0, 
-            'Aren Sugar': 15.3, 
-            'Robusta Coffee Beans 1000gr': 5.8876 
-        },
-        'JAGO Chocolate': { 
-            'Choco Powder': 12.5, 
-            'Susu UHT Diamond 1000ml': 145.0, 
-            'Aren Sugar': 22.5 
-        },
-        'Mont Blanc Shake': { 
-            'Liquid Creamer': 65.0, 
-            'Arabica Coffee Beans 1000gr': 4.3826, 
-            'Brown Sugar 5000 Gr': 8.0, 
-            'Granulated Sugar 50000gr': 6.0, 
-            'Orange Valencia NFC': 32.0 
-        },
-        'Vanilla Latte': { 
-            'Susu UHT Diamond 1000ml': 91.0, 
-            'Syrup Vanilla': 22.5, 
-            'Robusta Coffee Beans 1000gr': 5.2766 
-        }
+        'Cherry Americano': { 'Grenadine Syrup': 23.0, 'Granulated Sugar 50000gr': 5.0, 'Arabica Coffee Beans 1000gr': 142.0, 'Garam Gurih Miwon 500gr': 0.2 },
+        'Kopi Susu JAGO': { 'Melcreamer 25000gr': 12.5, 'Aren Sugar': 12.5, 'Condensed Milk Carnation': 12.5, 'Robusta Coffee Beans 1000gr': 5.7527, 'Susu UHT Diamond 1000ml': 70.0 },
+        'Salted Caramel Latte': { 'Syrup Salted Caramel': 18.25, 'Granulated Sugar 50000gr': 4.5, 'Robusta Coffee Beans 1000gr': 6.0701, 'Melcreamer 25000gr': 9.0, 'Susu UHT Diamond 1000ml': 67.25, 'Garam Gurih Miwon 500gr': 0.3 },
+        'Matcha Latte': { 'Matcha Powder Voya 1000 Gr': 18.0, 'Melcreamer 25000gr': 22.5, 'Susu UHT Diamond 1000ml': 63.5, 'Granulated Sugar 50000gr': 6.0 },
+        'JAGO Americano': { 'Arabica Coffee Beans 1000gr': 12.3826 },
+        'Citrus Cold Brew': { 'Arabica Coffee Beans 1000gr': 9.6696, 'Granulated Sugar 50000gr': 16.0, 'Lemon Extract 1000ml': 4.5, 'Lemon Puree 5000ml': 4.5 },
+        'Kopi Susu Oatside': { 'Oatside Barista Blend 1000ml': 72.5, 'Melcreamer 25000gr': 18.0, 'Aren Sugar': 15.3, 'Robusta Coffee Beans 1000gr': 5.8876 },
+        'JAGO Chocolate': { 'Choco Powder': 12.5, 'Susu UHT Diamond 1000ml': 145.0, 'Aren Sugar': 22.5 },
+        'Mont Blanc Shake': { 'Liquid Creamer': 65.0, 'Arabica Coffee Beans 1000gr': 4.3826, 'Brown Sugar 5000 Gr': 8.0, 'Granulated Sugar 50000gr': 6.0, 'Orange Valencia NFC': 32.0 },
+        'Vanilla Latte': { 'Susu UHT Diamond 1000ml': 91.0, 'Syrup Vanilla': 22.5, 'Robusta Coffee Beans 1000gr': 5.2766 }
     };
+
+    // DAFTAR PRODUK UNTUK STOK BEBAS & ON HAND
+    const productMasterStokBebas = [
+        { name: 'Cherry Americano', trayCap: 24 },
+        { name: 'Citrus Cold Brew', trayCap: 24 },
+        { name: 'Pink Coco Lemonade', trayCap: 24 },
+        { name: 'JAGO Americano', trayCap: 24 },
+        { name: 'JAGO Chocolate', trayCap: 24 },
+        { name: 'Kopi Susu JAGO', trayCap: 24 },
+        { name: 'Kopi Susu Oatside', trayCap: 24 },
+        { name: 'Matcha Latte', trayCap: 24 },
+        { name: 'Salted Caramel Latte', trayCap: 24 },
+        { name: 'Vanilla Latte', trayCap: 24 },
+        { name: 'Mont Blanc Shake', trayCap: 24 }
+    ];
 
     let stokGudangUser = {};
 
@@ -359,6 +378,9 @@
         let suppliesAkhir = document.getElementById('tglAkhirSupplies');
         if (suppliesAwal) suppliesAwal.value = firstDayStr;
         if (suppliesAkhir) suppliesAkhir.value = todayStr;
+
+        let tglHitungan = document.getElementById('tglHitungan');
+        if (tglHitungan) tglHitungan.value = todayStr;
     }
 
     function addBusinessDays(startDate, days) {
@@ -367,11 +389,139 @@
         while (added < days) {
             result.setDate(result.getDate() + 1);
             let dayOfWeek = result.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                added++;
-            }
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { added++; }
         }
         return result;
+    }
+
+    function gantiMode(mode) {
+        document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('sectionUpload').style.display = 'block';
+
+        const sections = ['sectionSales', 'sectionSupplies', 'sectionPlanner', 'sectionMaterials', 'sectionStokBebas'];
+        sections.forEach(s => { document.getElementById(s).style.display = 'none'; });
+
+        if (mode === 'sales') {
+            document.querySelectorAll('.btn-mode')[0].classList.add('active');
+            document.getElementById('sectionSales').style.display = 'block';
+        } else if (mode === 'supplies') {
+            document.querySelectorAll('.btn-mode')[1].classList.add('active');
+            document.getElementById('sectionSupplies').style.display = 'block';
+        } else if (mode === 'planner') {
+            document.querySelectorAll('.btn-mode')[2].classList.add('active');
+            document.getElementById('sectionUpload').style.display = 'none';
+            document.getElementById('sectionPlanner').style.display = 'block';
+            let today = new Date();
+            let tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('tglRencanaProduksi').value = tomorrow.toISOString().split('T')[0];
+            hitungRekomendasiProduksi();
+        } else if (mode === 'materials') {
+            document.querySelectorAll('.btn-mode')[3].classList.add('active');
+            document.getElementById('sectionUpload').style.display = 'none';
+            document.getElementById('sectionMaterials').style.display = 'block';
+            renderTabelBahanBakuDirect();
+        } else if (mode === 'stokBebas') {
+            document.querySelectorAll('.btn-mode')[4].classList.add('active');
+            document.getElementById('sectionUpload').style.display = 'none';
+            document.getElementById('sectionStokBebas').style.display = 'block';
+            renderTableStokBebas();
+        }
+    }
+
+    function renderTableStokBebas() {
+        const tbody = document.querySelector('#tblStokBebas tbody');
+        tbody.innerHTML = '';
+
+        productMasterStokBebas.forEach((p, idx) => {
+            let rowHtml = `
+                <tr>
+                    <td class="text-left">${p.name}</td>
+                    <td><input type="number" min="0" class="input-pink" id="sb_tray_${idx}" value="" oninput="hitungRowStokBebas(${idx})" /></td>
+                    <td><input type="number" min="0" class="input-pink" id="sb_pcs_${idx}" value="" oninput="hitungRowStokBebas(${idx})" /></td>
+                    <td class="cell-readonly" id="sb_total_${idx}">0</td>
+                    <td><input type="number" min="0" class="input-pink" id="lo_tray_${idx}" value="" oninput="hitungRowStokBebas(${idx})" /></td>
+                    <td><input type="number" min="0" class="input-pink" id="lo_pcs_${idx}" value="" oninput="hitungRowStokBebas(${idx})" /></td>
+                    <td class="cell-readonly" id="lo_total_${idx}">0</td>
+                    <td class="cell-readonly" style="background:#e8f8f5; color:#117864;" id="on_hand_${idx}">0</td>
+                    <td><input type="number" min="0" class="input-pink" id="ev_pcs_${idx}" value="" oninput="hitungRowStokBebas(${idx})" /></td>
+                    <td class="cell-readonly" style="background:#fef9e7; color:#b7950b;" id="avail_stock_${idx}">0</td>
+                </tr>
+            `;
+            tbody.innerHTML += rowHtml;
+        });
+    }
+
+    function hitungRowStokBebas(idx) {
+        const cap = productMasterStokBebas[idx].trayCap;
+
+        const sbTray = parseInt(document.getElementById(`sb_tray_${idx}`).value) || 0;
+        const sbPcs = parseInt(document.getElementById(`sb_pcs_${idx}`).value) || 0;
+        const sbTotal = (sbTray * cap) + sbPcs;
+        document.getElementById(`sb_total_${idx}`).innerText = sbTotal;
+
+        const loTray = parseInt(document.getElementById(`lo_tray_${idx}`).value) || 0;
+        const loPcs = parseInt(document.getElementById(`lo_pcs_${idx}`).value) || 0;
+        const loTotal = (loTray * cap) + loPcs;
+        document.getElementById(`lo_total_${idx}`).innerText = loTotal;
+
+        const totalOnHand = sbTotal + loTotal;
+        document.getElementById(`on_hand_${idx}`).innerText = totalOnHand;
+
+        const evPcs = parseInt(document.getElementById(`ev_pcs_${idx}`).value) || 0;
+        const availStock = totalOnHand - evPcs;
+        document.getElementById(`avail_stock_${idx}`).innerText = availStock;
+    }
+
+    function simpanStokBebas() {
+        const tgl = document.getElementById('tglHitungan').value;
+        const shift = document.getElementById('shiftHitungan').value;
+        const pic = document.getElementById('picName').value.trim();
+
+        if (!tgl || !pic) { alert("Mohon lengkapi Tanggal dan Nama PIC!"); return; }
+
+        let dataHitungan = [];
+        productMasterStokBebas.forEach((p, idx) => {
+            const cap = p.trayCap;
+            const sbTray = parseInt(document.getElementById(`sb_tray_${idx}`).value) || 0;
+            const sbPcs = parseInt(document.getElementById(`sb_pcs_${idx}`).value) || 0;
+            const sbTotal = (sbTray * cap) + sbPcs;
+
+            const loTray = parseInt(document.getElementById(`lo_tray_${idx}`).value) || 0;
+            const loPcs = parseInt(document.getElementById(`lo_pcs_${idx}`).value) || 0;
+            const loTotal = (loTray * cap) + loPcs;
+
+            const totalOnHand = sbTotal + loTotal;
+            const evPcs = parseInt(document.getElementById(`ev_pcs_${idx}`).value) || 0;
+            const availStock = totalOnHand - evPcs;
+
+            dataHitungan.push({
+                product: p.name,
+                sbTray: sbTray, sbPcs: sbPcs, sbTotal: sbTotal,
+                loTray: loTray, loPcs: loPcs, loTotal: loTotal,
+                totalOnHand: totalOnHand, evPcs: evPcs, availStock: availStock
+            });
+        });
+
+        const btn = document.getElementById('btnUpdateStokBebas');
+        const pesan = document.getElementById('pesanNotifStokBebas');
+        btn.disabled = true;
+        pesan.className = 'pesan proses'; pesan.innerText = 'Mengirim data ke Spreadsheet Pusat...'; pesan.style.display = 'block';
+
+        fetch(scriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'save_stok_bebas', tanggal: tgl, shift: shift, pic: pic, items: dataHitungan }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            redirect: 'follow'
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.status === 'sukses') {
+                pesan.className = 'pesan berhasil'; pesan.innerText = '✅ Berhasil tersimpan di Spreadsheet Pusat (Tab Hitungan & Riwayat)!';
+            } else throw new Error(resData.pesan || 'Gagal menyimpan');
+        })
+        .catch(err => { pesan.className = 'pesan gagal'; pesan.innerText = '❌ Gagal: ' + err.message; })
+        .finally(() => { btn.disabled = false; setTimeout(() => { pesan.style.display = 'none'; }, 4000); });
     }
 
     function renderTabelBahanBakuDirect() {
@@ -380,9 +530,7 @@
         tbody.innerHTML = "";
 
         let kebutuhanPerMinggu = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {} };
-        for(let m = 1; m <= 5; m++) {
-            Object.keys(masterBahanBaku).forEach(b => kebutuhanPerMinggu[m][b] = 0);
-        }
+        for(let m = 1; m <= 5; m++) { Object.keys(masterBahanBaku).forEach(b => kebutuhanPerMinggu[m][b] = 0); }
 
         if (typeof rawSalesData !== 'undefined' && rawSalesData.length > 0) {
             let sortedDates = rawSalesData.map(r => normalizeToISO(r[2])).filter(Boolean).sort();
@@ -413,8 +561,7 @@
             });
         }
 
-        let no = 1;
-        let today = new Date();
+        let no = 1, today = new Date();
 
         for (let bahan in masterBahanBaku) {
             let meta = masterBahanBaku[bahan];
@@ -429,7 +576,6 @@
             let stokFisik = parseFloat(stokGudangUser[bahan]);
             if (isNaN(stokFisik) || stokFisik < 0) stokFisik = 0;
 
-            // DETEKSI MINGGU BERJALAN AKTIF
             let mingguBerjalan = 0;
             if (m1 > 0) mingguBerjalan = 1;
             if (m2 > 0) mingguBerjalan = 2;
@@ -437,9 +583,8 @@
             if (m4 > 0) mingguBerjalan = 4;
             if (m5 > 0) mingguBerjalan = 5;
 
-            // MINGGU SELESAI PENUH (mingguBerjalan - 1) DENGAN MINIMAL PEMBAGI 1 MINGGU (6 HK)
             let mingguSelesai = Math.max(1, mingguBerjalan - 1);
-            let totalHariKerjaPembagi = mingguSelesai * 6; // 6 Hari Kerja/Minggu Selesai
+            let totalHariKerjaPembagi = mingguSelesai * 6;
 
             let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / totalHariKerjaPembagi) : 0;
             let coverHari = kebutuhanHarian > 0 ? (stokFisik / kebutuhanHarian) : 0;
@@ -448,7 +593,6 @@
             let leadTime = meta.leadTime || 3;
             let baseSafetyStock = kebutuhanHarian * leadTime;
 
-            // RUMUS SAFETY STOCK BARU: INC. BUFFER (+35% FAST, +20% SLOW)
             let bufferRate = meta.category === 'fast' ? 0.35 : 0.20;
             let safetyStock = baseSafetyStock * (1 + bufferRate);
 
@@ -500,10 +644,7 @@
         let file = inputElem ? inputElem.files[0] : null;
         if (!file) return;
 
-        if (typeof XLSX === 'undefined') {
-            alert("Library Excel belum siap. Refresh halaman web.");
-            return;
-        }
+        if (typeof XLSX === 'undefined') { alert("Library Excel belum siap. Refresh halaman web."); return; }
 
         let reader = new FileReader();
         reader.readAsArrayBuffer(file);
@@ -513,25 +654,18 @@
                 let data = new Uint8Array(e.target.result);
                 let workbook = XLSX.read(data, { type: 'array' });
                 let worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                
                 let matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
                 
-                if (!matrix || matrix.length === 0) {
-                    alert("File Excel kosong!");
-                    return;
-                }
+                if (!matrix || matrix.length === 0) { alert("File Excel kosong!"); return; }
 
-                let headerRowIdx = -1;
-                let colIdxProduct = -1;
-                let colIdxQty = -1;
+                let headerRowIdx = -1, colIdxProduct = -1, colIdxQty = -1;
 
                 for (let r = 0; r < Math.min(20, matrix.length); r++) {
                     let row = matrix[r];
                     for (let c = 0; c < row.length; c++) {
                         let cellVal = row[c] ? row[c].toString().trim().toLowerCase() : "";
                         if (cellVal.includes("product name") || cellVal === "product" || cellVal === "nama barang" || cellVal === "nama produk" || cellVal === "item name") {
-                            headerRowIdx = r;
-                            colIdxProduct = c;
+                            headerRowIdx = r; colIdxProduct = c;
                         }
                         if (cellVal.includes("stock qty") || cellVal.includes("ending qty") || cellVal.includes("physical qty") || cellVal === "qty" || cellVal === "stok") {
                             colIdxQty = c;
@@ -570,9 +704,7 @@
                     let clean = itemTitle.toLowerCase().trim().replace(/\s+/g, ' ');
                     for (let entry of exactCriteriaMap) {
                         for (let key of entry.keys) {
-                            if (clean === key || clean === key + 's') {
-                                return entry.master;
-                            }
+                            if (clean === key || clean === key + 's') return entry.master;
                         }
                     }
                     return null;
@@ -584,8 +716,7 @@
                     let row = matrix[r];
                     if (!row || row.length === 0) continue;
 
-                    let prodName = "";
-                    let stockQty = 0;
+                    let prodName = "", stockQty = 0;
 
                     if (colIdxProduct !== -1 && colIdxQty !== -1) {
                         prodName = row[colIdxProduct] ? row[colIdxProduct].toString().trim() : "";
@@ -600,10 +731,7 @@
                                 prodName = cellVal;
                                 for (let nextC = c + 1; nextC < row.length; nextC++) {
                                     let p = parseFloat(row[nextC]);
-                                    if (!isNaN(p) && p > 0) {
-                                        stockQty = p;
-                                        break;
-                                    }
+                                    if (!isNaN(p) && p > 0) { stockQty = p; break; }
                                 }
                                 break;
                             }
@@ -634,9 +762,7 @@
 
                 if (inputElem) inputElem.value = '';
 
-            } catch (err) {
-                alert("Gagal membaca file Excel: " + err.message);
-            }
+            } catch (err) { alert("Gagal membaca file Excel: " + err.message); }
         };
     }
 
@@ -681,47 +807,6 @@
         return dateOnly;
     }
 
-    function gantiMode(mode) {
-        document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
-        document.getElementById('sectionUpload').style.display = 'block';
-
-        if (mode === 'sales') {
-            document.querySelectorAll('.btn-mode')[0].classList.add('active');
-            document.getElementById('sectionSales').style.display = 'block';
-            document.getElementById('sectionSupplies').style.display = 'none';
-            document.getElementById('sectionPlanner').style.display = 'none';
-            document.getElementById('sectionMaterials').style.display = 'none';
-        } else if (mode === 'supplies') {
-            document.querySelectorAll('.btn-mode')[1].classList.add('active');
-            document.getElementById('sectionSales').style.display = 'none';
-            document.getElementById('sectionSupplies').style.display = 'block';
-            document.getElementById('sectionPlanner').style.display = 'none';
-            document.getElementById('sectionMaterials').style.display = 'none';
-        } else if (mode === 'planner') {
-            document.querySelectorAll('.btn-mode')[2].classList.add('active');
-            document.getElementById('sectionUpload').style.display = 'none';
-            document.getElementById('sectionSales').style.display = 'none';
-            document.getElementById('sectionSupplies').style.display = 'none';
-            document.getElementById('sectionPlanner').style.display = 'block';
-            document.getElementById('sectionMaterials').style.display = 'none';
-            
-            let today = new Date();
-            let tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('tglRencanaProduksi').value = tomorrow.toISOString().split('T')[0];
-            hitungRekomendasiProduksi();
-        } else if (mode === 'materials') {
-            document.querySelectorAll('.btn-mode')[3].classList.add('active');
-            document.getElementById('sectionUpload').style.display = 'none';
-            document.getElementById('sectionSales').style.display = 'none';
-            document.getElementById('sectionSupplies').style.display = 'none';
-            document.getElementById('sectionPlanner').style.display = 'none';
-            document.getElementById('sectionMaterials').style.display = 'block';
-
-            renderTabelBahanBakuDirect();
-        }
-    }
-
     function bukaTab(evt, tabName) {
         let contents = document.getElementsByClassName("tab-content");
         for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
@@ -764,9 +849,7 @@
                 
                 terapkanFilterSales();
                 terapkanFilterSupplies();
-            } else {
-                alert("Gagal memuat data: " + (data.pesan || "Terjadi kesalahan server"));
-            }
+            } else { alert("Gagal memuat data: " + (data.pesan || "Terjadi kesalahan server")); }
         })
         .catch(err => {
             console.error("Fetch Error:", err);
@@ -781,9 +864,7 @@
             let tgl = normalizeToISO(row[2]);
             let pName = row[3];
             let sold = parseInt(row[4]) || 0;
-            if(tgl === normTarget && pName && pName.toLowerCase().trim() === prodName.toLowerCase().trim()) {
-                sum += sold;
-            }
+            if(tgl === normTarget && pName && pName.toLowerCase().trim() === prodName.toLowerCase().trim()) { sum += sold; }
         });
         return sum;
     }
