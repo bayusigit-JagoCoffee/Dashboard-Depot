@@ -109,7 +109,7 @@
     <div class="filter-box">
         <div class="filter-group"><label for="tglAwalSales">Dari Tanggal:</label><input type="date" id="tglAwalSales" /></div>
         <div class="filter-group"><label for="tglAkhirSales">Sampai Tanggal:</label><input type="date" id="tglAkhirSales" /></div>
-        <button class="btn-filter" onclick="terapkanFilterSales()">Terapkan Filter</button>
+        <button class="btn-filter" onclick="tarikData()">Terapkan Filter</button>
         <button class="btn-reset" onclick="resetFilterSales()">Reset All</button>
         <button class="btn-red" onclick="downloadPDFSales()">📄 Download Rekapan (PDF)</button>
     </div>
@@ -316,6 +316,25 @@
         <div id="pesanNotifStokBebas" class="pesan"></div>
     </div>
 
+    <!-- SUB TAB 2: RIWAYAT HITUNGAN -->
+    <div id="subRiwayatStokBebas" class="tab-content-stokbebas" style="display:none; padding-top:20px;">
+        <div class="filter-box">
+            <div class="filter-group"><label for="filterTglRiwayat">Filter Tanggal:</label><input type="date" id="filterTglRiwayat" onchange="renderRiwayatStokBebas()" /></div>
+            <div class="filter-group">
+                <label for="filterShiftRiwayat">Shift:</label>
+                <select id="filterShiftRiwayat" onchange="renderRiwayatStokBebas()">
+                    <option value="ALL">Semua Shift</option>
+                    <option value="Pagi">Pagi</option>
+                    <option value="Malam">Malam</option>
+                </select>
+            </div>
+            <button class="btn-reset" onclick="resetFilterRiwayat()">Reset Filter</button>
+        </div>
+
+        <h3>Log Riwayat Hitungan Opname</h3>
+        <div class="table-wrapper" id="containerTblRiwayat"></div>
+    </div>
+
     <!-- SUB TAB 3: COMPARE STOK -->
     <div id="subCompareStokBebas" class="tab-content-stokbebas" style="display:none; padding-top:20px;">
         <div class="filter-box">
@@ -347,9 +366,10 @@
         <h3>Tabel Perbandingan (Compare) & Selisih Stok</h3>
         <div class="table-wrapper" id="containerTblCompare"></div>
     </div>
+</div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzbYQoVTsOGA9n6fYeuGg0NrghO7mMBEQgRYAlCImYJ76XN9EmIh0AynTA8LVZEulrm/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxd3ro_rkFD-YkUV7JKSL63K2UxFbxeAW0VDBAHqhN_LtkjZqXyq4aqo4Aoy9T9PX77/exec';
 
     const excludedProducts = [
         'hojicha', 'hojicha lychee tea', 'jago black coffee', 'jago black', 'jago cakep',
@@ -447,14 +467,17 @@
         return dateOnly;
     }
 
-    function setRentangDefaultBulanIni() {
+    function setRentangDefault9Bulan() {
         let now = new Date();
-        let year = now.getFullYear();
-        let month = String(now.getMonth() + 1).padStart(2, '0');
-        let day = String(now.getDate()).padStart(2, '0');
+        let lookback = new Date(now.getFullYear(), now.getMonth() - 9, 1);
+        let y = lookback.getFullYear();
+        let m = String(lookback.getMonth() + 1).padStart(2, '0');
+        let firstDayStr = `${y}-${m}-01`;
 
-        let firstDayStr = `${year}-${month}-01`;
-        let todayStr = `${year}-${month}-${day}`;
+        let yearToday = now.getFullYear();
+        let monthToday = String(now.getMonth() + 1).padStart(2, '0');
+        let dayToday = String(now.getDate()).padStart(2, '0');
+        let todayStr = `${yearToday}-${monthToday}-${dayToday}`;
 
         if (document.getElementById('tglAwalSales')) document.getElementById('tglAwalSales').value = firstDayStr;
         if (document.getElementById('tglAkhirSales')) document.getElementById('tglAkhirSales').value = todayStr;
@@ -605,15 +628,13 @@
     function terapkanFilterSales() {
         let awal = document.getElementById('tglAwalSales').value, akhir = document.getElementById('tglAkhirSales').value;
         if(!awal && !akhir) { prosesDanTampilkanSales(rawSalesData); return; }
-        if(!awal || !akhir) { alert("Pilih Tanggal!"); return; }
         let filteredData = rawSalesData.filter(row => { let tgl = normalizeToISO(row[2]); return tgl >= awal && tgl <= akhir; });
         prosesDanTampilkanSales(filteredData);
     }
 
     function resetFilterSales() {
-        document.getElementById('tglAwalSales').value = "";
-        document.getElementById('tglAkhirSales').value = "";
-        prosesDanTampilkanSales(rawSalesData);
+        setRentangDefault9Bulan();
+        tarikData();
     }
 
     function prosesDanTampilkanSales(data) {
@@ -671,16 +692,13 @@
     function terapkanFilterSupplies() {
         let awal = document.getElementById('tglAwalSupplies').value, akhir = document.getElementById('tglAkhirSupplies').value;
         if(!awal && !akhir) { filteredSuppliesData = rawSuppliesData; prosesDanTampilkanSupplies(rawSuppliesData); return; }
-        if(!awal || !akhir) { alert("Pilih Tanggal!"); return; }
         filteredSuppliesData = rawSuppliesData.filter(row => { let tgl = normalizeToISO(row[2]); return tgl >= awal && tgl <= akhir; });
         prosesDanTampilkanSupplies(filteredSuppliesData);
     }
 
     function resetFilterSupplies() {
-        document.getElementById('tglAwalSupplies').value = "";
-        document.getElementById('tglAkhirSupplies').value = "";
-        filteredSuppliesData = rawSuppliesData;
-        prosesDanTampilkanSupplies(rawSuppliesData);
+        setRentangDefault9Bulan();
+        tarikData();
     }
 
     function prosesDanTampilkanSupplies(data) {
@@ -1108,7 +1126,7 @@
     function simpanStokBebas() {
         const tgl = document.getElementById('tglHitungan').value;
         const shift = document.getElementById('shiftHitungan').value;
-        const pic = document.getElementById('picName').value.trim();
+        const pic = document.getElementById('picName').value;
 
         if (!tgl || !pic) { alert("Mohon lengkapi Tanggal dan Nama PIC!"); return; }
 
@@ -1258,7 +1276,20 @@
             return;
         }
 
-        fetch(scriptURL)
+        let tglAwal = document.getElementById('tglAwalSales') ? document.getElementById('tglAwalSales').value : '';
+        let tglAkhir = document.getElementById('tglAkhirSales') ? document.getElementById('tglAkhirSales').value : '';
+
+        if (!tglAwal) {
+            let now = new Date();
+            let lookback = new Date(now.getFullYear(), now.getMonth() - 9, 1);
+            let y = lookback.getFullYear();
+            let m = String(lookback.getMonth() + 1).padStart(2, '0');
+            tglAwal = `${y}-${m}-01`;
+        }
+
+        let fetchUrl = `${scriptURL}?start=${tglAwal}&end=${tglAkhir}`;
+
+        fetch(fetchUrl)
         .then(res => res.json())
         .then(data => {
             if(data.status === 'sukses') {
@@ -1356,7 +1387,7 @@
     });
 
     window.onload = function() { 
-        setRentangDefaultBulanIni(); 
+        setRentangDefault9Bulan(); 
         tarikData(); 
     };
 </script>
