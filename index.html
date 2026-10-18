@@ -389,7 +389,46 @@
         { name: 'Mont Blanc Shake', trayCap: 24 }
     ];
 
-    let rawSalesData = [], rawSuppliesData = [], rawStokDepotData = [], rawRiwayatStokBebasData = [];
+    const masterProdukRules = [
+        { name: 'Cherry Americano', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 110, status: 'medium' },
+        { name: 'Citrus Cold Brew', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 110, status: 'medium' },
+        { name: 'Pink Coco Lemonade', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 100, status: 'low' },
+        { name: 'JAGO Americano', batchSize: 100, minBatch: 100, shelfLife: 7, defaultBuffer: 110, status: 'medium' },
+        { name: 'JAGO Chocolate', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 100, status: 'low' },
+        { name: 'Kopi Susu JAGO', batchSize: 1000, minBatch: 1000, shelfLife: 5, defaultBuffer: 100, status: 'bestseller' },
+        { name: 'Kopi Susu Oatside', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 110, status: 'medium' },
+        { name: 'Matcha Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 110, status: 'bestseller' },
+        { name: 'Salted Caramel Latte', batchSize: 1000, minBatch: 500, shelfLife: 5, defaultBuffer: 100, status: 'bestseller' },
+        { name: 'Vanilla Latte', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 100, status: 'low' },
+        { name: 'Mont Blanc Shake', batchSize: 100, minBatch: 100, shelfLife: 5, defaultBuffer: 110, status: 'medium' }
+    ];
+
+    const targetSuppliesItems = ['Plastik Sampah (Pcs)', 'Sarung Tangan Plastik (Pack)', 'Plastik Take Away M (Pack)', 'Plastik Take Away L (Pack)', 'Plastik Klip M (Pack)', 'Tissue Kotak Napkin (Pack)', 'Tutup Gelas Plastik (Pcs)'];
+    const monthMap = {'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'};
+
+    let rawSalesData = [], rawSuppliesData = [], rawStokDepotData = [], rawRiwayatStokBebasData = [], filteredSuppliesData = [];
+    let chartTotal = null, chartProduk = null, stokGudangUser = {};
+
+    function normalizeToISO(raw) {
+        if(!raw) return '';
+        let str = raw.toString().trim().replace(/^'/, '');
+        if(str.includes('T')) str = str.split('T')[0];
+        let spaceParts = str.split(' ');
+        if(spaceParts.length >= 3 && isNaN(spaceParts[1])) {
+            let day = spaceParts[0].padStart(2, '0');
+            let monStr = spaceParts[1].substring(0, 3).toLowerCase();
+            let month = monthMap[monStr] || '01';
+            let year = spaceParts[2].length === 2 ? '20' + spaceParts[2] : spaceParts[2];
+            return `${year}-${month}-${day}`;
+        }
+        let dateOnly = spaceParts[0];
+        let parts = dateOnly.split(/[-/.]/);
+        if(parts.length === 3) {
+            if(parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            if(parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        return dateOnly;
+    }
 
     function setRentangDefaultBulanIni() {
         let now = new Date();
@@ -407,6 +446,24 @@
         if (document.getElementById('tglHitungan')) document.getElementById('tglHitungan').value = todayStr;
         if (document.getElementById('tglCompareAwal')) document.getElementById('tglCompareAwal').value = todayStr;
         if (document.getElementById('tglCompareAkhir')) document.getElementById('tglCompareAkhir').value = todayStr;
+    }
+
+    function bukaTab(evt, tabName) {
+        let contents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
+        let btns = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+
+    function bukaTabSupplies(evt, tabName) {
+        let contents = document.getElementsByClassName("tab-content-supplies");
+        for (let i = 0; i < contents.length; i++) contents[i].style.display = "none";
+        let btns = evt.currentTarget.parentNode.getElementsByClassName("tab-btn");
+        for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.classList.add("active");
     }
 
     function bukaTabStokBebas(evt, subTabId) {
@@ -454,6 +511,537 @@
             document.getElementById('sectionStokBebas').style.display = 'block';
             renderTableStokBebas();
         }
+    }
+
+    function renderTabelRank(elementId, dataObj, labelNilai) {
+        let sorted = Object.keys(dataObj).map(key => [key, dataObj[key]]).sort((a, b) => b[1] - a[1]);
+        let html = '';
+        sorted.forEach((item, index) => {
+            html += `<tr><td><span class="badge-rank">${index+1}</span></td><td class="text-left">${item[0]}</td><td><b>${item[1]}</b></td></tr>`;
+        });
+        document.querySelector(`#${elementId} tbody`).innerHTML = html;
+    }
+
+    function renderTabelPivotDibalik(containerId, matrixData, arrProduk, arrTgl) {
+        let html = '<table><thead><tr><th class="text-left" style="min-width:100px;">Tanggal</th>';
+        arrProduk.forEach(p => { html += `<th>${p}</th>`; });
+        html += '<th style="min-width:70px;">Total</th></tr></thead><tbody>';
+
+        if(arrTgl.length === 0) html += `<tr><td colspan="${arrProduk.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data</td></tr>`;
+        else {
+            let totalPerProduk = {}; arrProduk.forEach(p => { totalPerProduk[p] = 0; });
+            let grandTotal = 0;
+            arrTgl.forEach(tgl => {
+                let totalRow = 0;
+                html += `<tr><td class="text-left">${tgl}</td>`;
+                arrProduk.forEach(p => {
+                    let val = matrixData[tgl] && matrixData[tgl][p] ? matrixData[tgl][p] : 0;
+                    totalRow += val; totalPerProduk[p] += val; html += `<td>${val}</td>`;
+                });
+                grandTotal += totalRow; html += `<td><b>${totalRow}</b></td></tr>`;
+            });
+            html += '<tr class="row-total"><td class="text-left">Total</td>';
+            arrProduk.forEach(p => { html += `<td>${totalPerProduk[p]}</td>`; });
+            html += `<td>${grandTotal}</td></tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById(containerId).innerHTML = html;
+    }
+
+    function renderGrafikSales(matrixSales, arrProduk, arrTgl) {
+        let totalHarian = arrTgl.map(tgl => {
+            let sum = 0;
+            arrProduk.forEach(p => { sum += (matrixSales[tgl] && matrixSales[tgl][p]) ? matrixSales[tgl][p] : 0; });
+            return sum;
+        });
+
+        if(chartTotal) chartTotal.destroy();
+        let ctxTotal = document.getElementById('chartTotalSales').getContext('2d');
+        chartTotal = new Chart(ctxTotal, {
+            type: 'line',
+            data: { labels: arrTgl, datasets: [{ label: 'Total Penjualan Semua Produk', data: totalHarian, borderColor: '#27ae60', backgroundColor: 'rgba(39, 174, 96, 0.1)', fill: true, tension: 0.2 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        let select = document.getElementById('selectProduk');
+        select.innerHTML = '';
+        arrProduk.forEach(p => { select.innerHTML += `<option value="${p}">${p}</option>`; });
+
+        window.currentMatrixSales = matrixSales; window.currentArrTgl = arrTgl;
+        updateChartProduk();
+    }
+
+    function updateChartProduk() {
+        let pSelected = document.getElementById('selectProduk').value;
+        if(!pSelected) return;
+        let dataProduk = window.currentArrTgl.map(tgl => (window.currentMatrixSales[tgl] && window.currentMatrixSales[tgl][pSelected]) ? window.currentMatrixSales[tgl][pSelected] : 0);
+
+        if(chartProduk) chartProduk.destroy();
+        let ctxProduk = document.getElementById('chartPerProduk').getContext('2d');
+        chartProduk = new Chart(ctxProduk, {
+            type: 'bar',
+            data: { labels: window.currentArrTgl, datasets: [{ label: 'Penjualan: ' + pSelected, data: dataProduk, backgroundColor: '#3498db', borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    function terapkanFilterSales() {
+        let awal = document.getElementById('tglAwalSales').value, akhir = document.getElementById('tglAkhirSales').value;
+        if(!awal && !akhir) { prosesDanTampilkanSales(rawSalesData); return; }
+        if(!awal || !akhir) { alert("Pilih Tanggal!"); return; }
+        let filteredData = rawSalesData.filter(row => { let tgl = normalizeToISO(row[2]); return tgl >= awal && tgl <= akhir; });
+        prosesDanTampilkanSales(filteredData);
+    }
+
+    function resetFilterSales() {
+        document.getElementById('tglAwalSales').value = "";
+        document.getElementById('tglAkhirSales').value = "";
+        prosesDanTampilkanSales(rawSalesData);
+    }
+
+    function prosesDanTampilkanSales(data) {
+        let rankSales = {}, rankLeftover = {}, rankWasteJagoan = {}, rankWasteProduk = {};
+        let matrixSales = {}, matrixWaste = {};
+        let setTanggal = new Set(), setProduk = new Set();
+
+        data.forEach(row => {
+            let nama = row[0], tgl = normalizeToISO(row[2]), produk = row[3], sold = parseInt(row[4]) || 0, waste = parseInt(row[6]) || 0, leftover = parseInt(row[7]) || 0;
+            if(!nama || !tgl || !produk) return;
+
+            let cleanProd = produk.toString().trim().toLowerCase();
+            if (excludedProducts.some(ex => cleanProd.includes(ex))) return;
+
+            setTanggal.add(tgl); setProduk.add(produk);
+            rankSales[nama] = (rankSales[nama] || 0) + sold;
+            rankLeftover[nama] = (rankLeftover[nama] || 0) + leftover;
+            rankWasteJagoan[nama] = (rankWasteJagoan[nama] || 0) + waste;
+            rankWasteProduk[produk] = (rankWasteProduk[produk] || 0) + waste;
+            if(!matrixSales[tgl]) matrixSales[tgl] = {};
+            matrixSales[tgl][produk] = (matrixSales[tgl][produk] || 0) + sold;
+            if(!matrixWaste[tgl]) matrixWaste[tgl] = {};
+            matrixWaste[tgl][produk] = (matrixWaste[tgl][produk] || 0) + waste;
+        });
+
+        let arrTgl = Array.from(setTanggal).sort();
+        let arrProduk = Array.from(setProduk).sort();
+
+        renderTabelRank('tblRankSales', rankSales, 'Terjual');
+        renderTabelRank('tblRankLeftover', rankLeftover, 'Leftover');
+        renderTabelRank('tblRankWasteJagoan', rankWasteJagoan, 'Waste');
+        renderTabelRank('tblRankWasteProduk', rankWasteProduk, 'Waste');
+
+        renderTabelPivotDibalik('containerTblSalesHarian', matrixSales, arrProduk, arrTgl);
+        renderTabelPivotDibalik('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
+        renderGrafikSales(matrixSales, arrProduk, arrTgl);
+    }
+
+    function isTargetItem(item) {
+        if(!item) return false;
+        let cleanItem = item.toString().trim().toLowerCase();
+        return targetSuppliesItems.some(t => cleanItem.includes(t.toLowerCase().split('(')[0].trim()));
+    }
+
+    function getNormalizedItemName(item) {
+        if(!item) return '';
+        let cleanItem = item.toString().trim().toLowerCase();
+        for(let target of targetSuppliesItems) {
+            let key = target.toLowerCase().split('(')[0].trim();
+            if(cleanItem.includes(key)) return target;
+        }
+        return item;
+    }
+
+    function terapkanFilterSupplies() {
+        let awal = document.getElementById('tglAwalSupplies').value, akhir = document.getElementById('tglAkhirSupplies').value;
+        if(!awal && !akhir) { filteredSuppliesData = rawSuppliesData; prosesDanTampilkanSupplies(rawSuppliesData); return; }
+        if(!awal || !akhir) { alert("Pilih Tanggal!"); return; }
+        filteredSuppliesData = rawSuppliesData.filter(row => { let tgl = normalizeToISO(row[2]); return tgl >= awal && tgl <= akhir; });
+        prosesDanTampilkanSupplies(filteredSuppliesData);
+    }
+
+    function resetFilterSupplies() {
+        document.getElementById('tglAwalSupplies').value = "";
+        document.getElementById('tglAkhirSupplies').value = "";
+        filteredSuppliesData = rawSuppliesData;
+        prosesDanTampilkanSupplies(rawSuppliesData);
+    }
+
+    function prosesDanTampilkanSupplies(data) {
+        let matrixSupplies = {}, setTanggal = new Set(), setJagoan = new Set();
+        data.forEach(row => {
+            let nama = row[0], item = row[1], tgl = normalizeToISO(row[2]), qty = parseInt(row[3]) || 0;
+            if(!tgl || !item || !isTargetItem(item)) return;
+            let normItem = getNormalizedItemName(item);
+            setTanggal.add(tgl); if(nama) setJagoan.add(nama);
+            if(!matrixSupplies[tgl]) matrixSupplies[tgl] = {};
+            matrixSupplies[tgl][normItem] = (matrixSupplies[tgl][normItem] || 0) + qty;
+        });
+
+        let arrTgl = Array.from(setTanggal).sort();
+        let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Tanggal</th>';
+        targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
+        html += '</tr></thead><tbody>';
+
+        if(arrTgl.length === 0) html += `<tr><td colspan="${targetSuppliesItems.length + 1}" style="color:#7f8c8d; padding:15px;">Tidak ada data</td></tr>`;
+        else {
+            arrTgl.forEach(tgl => {
+                html += `<tr><td class="text-left">${tgl}</td>`;
+                targetSuppliesItems.forEach(it => {
+                    let val = matrixSupplies[tgl] && matrixSupplies[tgl][it] ? matrixSupplies[tgl][it] : 0;
+                    html += `<td>${val}</td>`;
+                });
+                html += '</tr>';
+            });
+        }
+        html += '</tbody></table>';
+        document.getElementById('containerTblSuppliesHarian').innerHTML = html;
+
+        let datalist = document.getElementById('listJagoanOptions');
+        datalist.innerHTML = '';
+        Array.from(setJagoan).sort().forEach(j => { datalist.innerHTML += `<option value="${j}">`; });
+        renderRekapJagoanSupplies();
+    }
+
+    function resetSearchJagoan() { document.getElementById('searchJagoanSupplies').value = ''; renderRekapJagoanSupplies(); }
+
+    function renderRekapJagoanSupplies() {
+        let queryNama = document.getElementById('searchJagoanSupplies').value.trim();
+        let queryNamaLower = queryNama.toLowerCase();
+        let titleEl = document.getElementById('titleTblRekapJagoan');
+
+        if (queryNama !== '') {
+            titleEl.innerText = `Detail Checkout Supplies per Tanggal - ${queryNama}`;
+            let matrixTgl = {}, setTglFound = new Set();
+            filteredSuppliesData.forEach(row => {
+                let nama = row[0], item = row[1], tgl = normalizeToISO(row[2]), qty = parseInt(row[3]) || 0;
+                if(!nama || !item || !tgl || !isTargetItem(item)) return;
+                if(nama.toLowerCase().includes(queryNamaLower)) {
+                    let normItem = getNormalizedItemName(item);
+                    setTglFound.add(tgl);
+                    if(!matrixTgl[tgl]) matrixTgl[tgl] = {};
+                    matrixTgl[tgl][normItem] = (matrixTgl[tgl][normItem] || 0) + qty;
+                }
+            });
+
+            let arrTgl = Array.from(setTglFound).sort();
+            let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Tanggal</th>';
+            targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            if(arrTgl.length === 0) html += `<tr><td colspan="${targetSuppliesItems.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data</td></tr>`;
+            else {
+                let totalPerItem = {}; targetSuppliesItems.forEach(it => { totalPerItem[it] = 0; });
+                let grandTotal = 0;
+                arrTgl.forEach(tgl => {
+                    let totalRow = 0;
+                    html += `<tr><td class="text-left">${tgl}</td>`;
+                    targetSuppliesItems.forEach(it => {
+                        let val = matrixTgl[tgl] && matrixTgl[tgl][it] ? matrixTgl[tgl][it] : 0;
+                        totalRow += val; totalPerItem[it] += val; html += `<td>${val}</td>`;
+                    });
+                    grandTotal += totalRow; html += `<td><b>${totalRow}</b></td></tr>`;
+                });
+                html += '<tr class="row-total"><td class="text-left">Total</td>';
+                targetSuppliesItems.forEach(it => { html += `<td>${totalPerItem[it]}</td>`; });
+                html += `<td>${grandTotal}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
+        } else {
+            titleEl.innerText = 'Tabel Rekapitulasi Supplies Per Jagoan';
+            let matrixJagoan = {}, setJagoanFound = new Set();
+            filteredSuppliesData.forEach(row => {
+                let nama = row[0], item = row[1], qty = parseInt(row[3]) || 0;
+                if(!nama || !item || !isTargetItem(item)) return;
+                let normItem = getNormalizedItemName(item);
+                setJagoanFound.add(nama);
+                if(!matrixJagoan[nama]) matrixJagoan[nama] = {};
+                matrixJagoan[nama][normItem] = (matrixJagoan[nama][normItem] || 0) + qty;
+            });
+
+            let arrJagoan = Array.from(setJagoanFound).sort();
+            let html = '<table class="tbl-supplies"><thead><tr><th class="text-left">Nama Jagoan</th>';
+            targetSuppliesItems.forEach(it => { html += `<th>${it}</th>`; });
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            if(arrJagoan.length === 0) html += `<tr><td colspan="${targetSuppliesItems.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data</td></tr>`;
+            else {
+                let totalPerItem = {}; targetSuppliesItems.forEach(it => { totalPerItem[it] = 0; });
+                let grandTotal = 0;
+                arrJagoan.forEach(jagoan => {
+                    let totalRow = 0;
+                    html += `<tr><td class="text-left">${jagoan}</td>`;
+                    targetSuppliesItems.forEach(it => {
+                        let val = matrixJagoan[jagoan] && matrixJagoan[jagoan][it] ? matrixJagoan[jagoan][it] : 0;
+                        totalRow += val; totalPerItem[it] += val; html += `<td>${val}</td>`;
+                    });
+                    grandTotal += totalRow; html += `<td><b>${totalRow}</b></td></tr>`;
+                });
+                html += '<tr class="row-total"><td class="text-left">Total</td>';
+                targetSuppliesItems.forEach(it => { html += `<td>${totalPerItem[it]}</td>`; });
+                html += `<td>${grandTotal}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            document.getElementById('containerTblSuppliesJagoan').innerHTML = html;
+        }
+    }
+
+    function getPenjualanByDateProduct(targetDate, prodName) {
+        let sum = 0;
+        let normTarget = normalizeToISO(targetDate);
+        rawSalesData.forEach(row => {
+            let tgl = normalizeToISO(row[2]);
+            let pName = row[3];
+            let sold = parseInt(row[4]) || 0;
+            if(tgl === normTarget && pName && pName.toLowerCase().trim() === prodName.toLowerCase().trim()) { sum += sold; }
+        });
+        return sum;
+    }
+
+    function renderStatusBadge(status) {
+        if(status === 'bestseller') return '<span class="badge-bestseller">Best Seller</span>';
+        if(status === 'low') return '<span class="badge-low">Low</span>';
+        return '<span class="badge-medium">Medium</span>';
+    }
+
+    function hitungRekomendasiProduksi() {
+        let tglTarget = document.getElementById('tglRencanaProduksi').value;
+        if (!tglTarget) return;
+
+        let dTarget = new Date(tglTarget);
+        let dH1 = new Date(dTarget); dH1.setDate(dH1.getDate() - 1);
+        let dH7 = new Date(dTarget); dH7.setDate(dH7.getDate() - 7);
+
+        let strH1 = dH1.toISOString().split('T')[0];
+        let strH7 = dH7.toISOString().split('T')[0];
+
+        let tbody = document.querySelector("#tblProductionPlanner tbody");
+        tbody.innerHTML = "";
+
+        masterProdukRules.forEach((p, index) => {
+            let soldH1 = getPenjualanByDateProduct(strH1, p.name);
+            let soldH7 = getPenjualanByDateProduct(strH7, p.name);
+
+            let bufferInputId = `bufferInput_${index}`;
+            let stokInputId = `stokInput_${index}`;
+
+            let rowHtml = `
+                <tr>
+                    <td><b>${index + 1}</b></td>
+                    <td class="text-left">${p.name}</td>
+                    <td>${renderStatusBadge(p.status)}</td>
+                    <td>${p.batchSize} cup</td>
+                    <td>${p.shelfLife} hari</td>
+                    <td><b id="soldH1_${index}">${soldH1}</b></td>
+                    <td><b id="soldH7_${index}">${soldH7}</b></td>
+                    <td><input type="number" id="${bufferInputId}" value="${p.defaultBuffer}" min="0" max="300" style="width:55px; text-align:center;" oninput="kalkulasiBarisProduksi(${index})" /> %</td>
+                    <td><input type="number" id="${stokInputId}" value="0" min="0" style="width:70px; text-align:center;" oninput="kalkulasiBarisProduksi(${index})" /></td>
+                    <td><b id="rekCup_${index}" style="font-size:14px; color:#27ae60;">0 cup</b></td>
+                    <td><b id="rekBatch_${index}" style="font-size:13px; color:#2980b9;">0 Batch</b></td>
+                </tr>
+            `;
+            tbody.innerHTML += rowHtml;
+        });
+
+        masterProdukRules.forEach((p, index) => { kalkulasiBarisProduksi(index); });
+    }
+
+    function kalkulasiBarisProduksi(index) {
+        let p = masterProdukRules[index];
+        let soldH1 = parseInt(document.getElementById(`soldH1_${index}`).innerText) || 0;
+        let soldH7 = parseInt(document.getElementById(`soldH7_${index}`).innerText) || 0;
+        let bufferVal = parseFloat(document.getElementById(`bufferInput_${index}`).value) || 0;
+        let sisaStok = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
+
+        let baselineEst = Math.max(soldH1, soldH7);
+        let grossNeed = Math.ceil(baselineEst * (1 + (bufferVal / 100)));
+        let netNeeded = grossNeed - sisaStok;
+
+        let finalProduceCup = 0;
+        let batchText = "0 Batch";
+
+        if (netNeeded > 0) {
+            if (p.name === 'Salted Caramel Latte') {
+                let numMinBatches = Math.ceil(netNeeded / 500);
+                finalProduceCup = numMinBatches * 500;
+                batchText = (finalProduceCup / 1000) + " Batch";
+            } else if (p.name === 'Kopi Susu JAGO') {
+                let numBatches = Math.ceil(netNeeded / 1000);
+                finalProduceCup = numBatches * 1000;
+                batchText = numBatches + " Batch";
+            } else {
+                let numBatches = Math.ceil(netNeeded / p.batchSize);
+                finalProduceCup = numBatches * p.batchSize;
+                batchText = numBatches + " Batch";
+            }
+        }
+
+        document.getElementById(`rekCup_${index}`).innerText = finalProduceCup + " cup";
+        document.getElementById(`rekBatch_${index}`).innerText = batchText;
+    }
+
+    function simpanSisaStokDepot() {
+        let tgl = document.getElementById('tglRencanaProduksi').value;
+        if (!tgl) { alert("Pilih tanggal terlebih dahulu!"); return; }
+
+        let stokData = [];
+        masterProdukRules.forEach((p, index) => {
+            let soldH1 = parseInt(document.getElementById(`soldH1_${index}`).innerText) || 0;
+            let soldH7 = parseInt(document.getElementById(`soldH7_${index}`).innerText) || 0;
+            let bufferVal = parseFloat(document.getElementById(`bufferInput_${index}`).value) || 0;
+            let sisaStok = parseInt(document.getElementById(`stokInput_${index}`).value) || 0;
+            let rekCup = document.getElementById(`rekCup_${index}`).innerText.replace(' cup', '').trim();
+            let rekBatch = document.getElementById(`rekBatch_${index}`).innerText.trim();
+
+            stokData.push({ produk: p.name, soldH1: soldH1, soldH7: soldH7, bufferPct: bufferVal, stok: sisaStok, rekCup: rekCup, rekBatch: rekBatch });
+        });
+
+        let btn = document.getElementById('btnSimpanStok');
+        let pesan = document.getElementById('pesanStok');
+        btn.disabled = true;
+        pesan.className = 'pesan proses'; pesan.innerText = 'Menyimpan...'; pesan.style.display = 'block';
+
+        fetch(scriptURL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'save_stok_depot', tanggal: tgl, stokData: stokData }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            redirect: 'follow'
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.status === 'sukses') {
+                pesan.className = 'pesan berhasil'; pesan.innerText = 'Selesai! Berhasil disimpan ke Sheets.';
+            } else throw new Error(resData.pesan || 'Gagal menyimpan');
+        })
+        .catch(err => { pesan.className = 'pesan gagal'; pesan.innerText = 'Gagal: ' + err.message; })
+        .finally(() => { btn.disabled = false; setTimeout(() => { pesan.style.display = 'none'; }, 4000); });
+    }
+
+    function renderTabelBahanBakuDirect() {
+        let tbody = document.querySelector("#tblRawMaterials tbody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        let kebutuhanPerMinggu = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {} };
+        for(let m = 1; m <= 5; m++) { Object.keys(masterBahanBaku).forEach(b => kebutuhanPerMinggu[m][b] = 0); }
+
+        if (typeof rawSalesData !== 'undefined' && rawSalesData.length > 0) {
+            let sortedDates = rawSalesData.map(r => normalizeToISO(r[2])).filter(Boolean).sort();
+            let startDate = sortedDates.length > 0 ? new Date(sortedDates[0]) : new Date();
+
+            rawSalesData.forEach(row => {
+                let tglStr = normalizeToISO(row[2]);
+                let pName = row[3];
+                let soldCup = parseInt(row[4]) || 0;
+
+                if (tglStr && pName && soldCup > 0) {
+                    let cleanName = pName.toString().trim().toLowerCase();
+                    if (excludedProducts.some(ex => cleanName.includes(ex))) return;
+
+                    let currDate = new Date(tglStr);
+                    let diffDays = Math.floor((currDate - startDate) / (1000 * 60 * 60 * 24));
+                    let weekIdx = Math.min(Math.floor(diffDays / 7) + 1, 5);
+
+                    if (resepBahanBakuPerCup[pName]) {
+                        let resepPerCup = resepBahanBakuPerCup[pName];
+                        for (let bahan in resepPerCup) {
+                            if (kebutuhanPerMinggu[weekIdx][bahan] !== undefined) {
+                                kebutuhanPerMinggu[weekIdx][bahan] += resepPerCup[bahan] * soldCup;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        let no = 1, today = new Date();
+
+        for (let bahan in masterBahanBaku) {
+            let meta = masterBahanBaku[bahan];
+
+            let m1 = (kebutuhanPerMinggu[1][bahan] || 0) / meta.konversiGr;
+            let m2 = (kebutuhanPerMinggu[2][bahan] || 0) / meta.konversiGr;
+            let m3 = (kebutuhanPerMinggu[3][bahan] || 0) / meta.konversiGr;
+            let m4 = (kebutuhanPerMinggu[4][bahan] || 0) / meta.konversiGr;
+            let m5 = (kebutuhanPerMinggu[5][bahan] || 0) / meta.konversiGr;
+
+            let totalKebutuhan = m1 + m2 + m3 + m4 + m5;
+            let stokFisik = parseFloat(stokGudangUser[bahan]);
+            if (isNaN(stokFisik) || stokFisik < 0) stokFisik = 0;
+
+            let mingguBerjalan = 0;
+            if (m1 > 0) mingguBerjalan = 1;
+            if (m2 > 0) mingguBerjalan = 2;
+            if (m3 > 0) mingguBerjalan = 3;
+            if (m4 > 0) mingguBerjalan = 4;
+            if (m5 > 0) mingguBerjalan = 5;
+
+            let mingguSelesai = Math.max(1, mingguBerjalan - 1);
+            let totalHariKerjaPembagi = mingguSelesai * 6;
+
+            let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / totalHariKerjaPembagi) : 0;
+            let coverHari = kebutuhanHarian > 0 ? (stokFisik / kebutuhanHarian) : 0;
+            let coverMinggu = coverHari / 6;
+
+            let leadTime = meta.leadTime || 3;
+            let baseSafetyStock = kebutuhanHarian * leadTime;
+
+            let bufferRate = meta.category === 'fast' ? 0.35 : 0.20;
+            let safetyStock = baseSafetyStock * (1 + bufferRate);
+
+            let dateStockOut = addBusinessDays(today, Math.floor(coverHari));
+            let strStockOut = dateStockOut.toISOString().split('T')[0];
+
+            let saranBelanja = Math.max(0, (totalKebutuhan + safetyStock) - stokFisik);
+
+            let statusBadge = '';
+            if (stokFisik < safetyStock || coverHari < leadTime) {
+                statusBadge = `<span style="background-color:#e74c3c; color:white; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🔴 Kritis (Restock)</span>`;
+            } else if (coverHari <= (leadTime + 3)) {
+                statusBadge = `<span style="background-color:#f1c40f; color:#333; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🟡 Menipis</span>`;
+            } else {
+                statusBadge = `<span style="background-color:#2ecc71; color:white; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🟢 Aman</span>`;
+            }
+
+            let catLabel = meta.category === 'fast' ? '<small style="color:#e67e22; font-weight:bold;">[Fast +35%]</small>' : '<small style="color:#7f8c8d;">[Slow +20%]</small>';
+
+            let rowHtml = `
+                <tr>
+                    <td><b>${no++}</b></td>
+                    <td class="text-left">${bahan} <br>${catLabel}</td>
+                    <td>${m1.toFixed(2)}</td>
+                    <td>${m2.toFixed(2)}</td>
+                    <td>${m3.toFixed(2)}</td>
+                    <td>${m4.toFixed(2)}</td>
+                    <td>${m5.toFixed(2)}</td>
+                    <td><b style="color:#2980b9;">${totalKebutuhan.toFixed(2)}</b></td>
+                    <td><b>${meta.satuan}</b></td>
+                    <td>
+                        <input type="number" value="${stokFisik.toFixed(2)}" min="0" step="0.1" style="width:65px; text-align:center; font-weight:bold;" oninput="stokGudangUser['${bahan}']=parseFloat(this.value)||0; renderTabelBahanBakuDirect();" />
+                    </td>
+                    <td><b style="color:#d35400;">${safetyStock.toFixed(2)}</b></td>
+                    <td>${kebutuhanHarian.toFixed(2)}</td>
+                    <td><b>${coverHari.toFixed(1)} HK</b></td>
+                    <td>${coverMinggu.toFixed(1)} Mgg</td>
+                    <td>${leadTime} HK</td>
+                    <td>${strStockOut}</td>
+                    <td><b style="color:#c0392b;">${saranBelanja.toFixed(2)} ${meta.satuan}</b></td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+            tbody.innerHTML += rowHtml;
+        }
+    }
+
+    function addBusinessDays(startDate, days) {
+        let result = new Date(startDate);
+        let added = 0;
+        while (added < days) {
+            result.setDate(result.getDate() + 1);
+            let dayOfWeek = result.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { added++; }
+        }
+        return result;
     }
 
     function renderTableStokBebas() {
@@ -668,6 +1256,84 @@
             if(tbodySales) tbodySales.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:15px; color:#e74c3c;">❌ Gagal koneksi ke Apps Script.</td></tr>`;
         });
     }
+
+    let parsedDataUpload = [];
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById('fileName').innerText = "File: " + file.name;
+        let uploadType = document.querySelector('input[name="uploadType"]:checked').value;
+
+        Papa.parse(file, {
+            header: true, skipEmptyLines: true, transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
+            complete: function(results) {
+                parsedDataUpload = [];
+                results.data.forEach(row => {
+                    const getVal = (possibleKeys) => {
+                        for(let k of Object.keys(row)) {
+                            let cleanK = k.trim().toLowerCase();
+                            for(let p of possibleKeys) { if(cleanK === p.toLowerCase()) return row[k]; }
+                        }
+                        return '';
+                    };
+
+                    if (uploadType === "sales") {
+                        let id = getVal(['Jagoan ID', 'Jagoan Id', 'jagoan id']);
+                        if(id) {
+                            let nama = getVal(['Name', 'Nama']);
+                            let rawApprove = getVal(['Approved At', 'Approved_At']);
+                            let tanggal = normalizeToISO(rawApprove);
+                            let item = getVal(['Item Name', 'Item']);
+                            let sold = parseInt(getVal(['Sold'])) || 0;
+                            let exp = parseInt(getVal(['Expired'])) || 0;
+                            let left = parseInt(getVal(['Leftover'])) || 0;
+                            parsedDataUpload.push([nama, id, tanggal, item, sold, exp+left, exp, left]);
+                        }
+                    } else if (uploadType === "supplies") {
+                        let nama = getVal(['Name', 'Nama']);
+                        let item = getVal(['Item', 'Item Name']);
+                        let id = getVal(['Jagoan ID', 'Jagoan Id']);
+                        let rawApprove = getVal(['Approved At', 'Approved_At', 'Requested At']);
+                        let tanggal = normalizeToISO(rawApprove);
+                        let appQty = parseInt(getVal(['Approved Quant', 'Approved Quantity', 'Approved_Quant', 'Requested Quan'])) || 0;
+                        if(item && isTargetItem(item)) { parsedDataUpload.push([nama, item, tanggal, appQty, id]); }
+                    }
+                });
+                if(parsedDataUpload.length > 0) document.getElementById('btnProses').disabled = false;
+            }
+        });
+    });
+
+    document.getElementById('btnProses').addEventListener('click', async function() {
+        this.disabled = true;
+        let pesanUpload = document.getElementById('pesanUpload');
+        pesanUpload.className = 'pesan proses'; pesanUpload.style.display = 'block';
+
+        let uploadType = document.querySelector('input[name="uploadType"]:checked').value;
+        const CHUNK_SIZE = 300; 
+        const totalData = parsedDataUpload.length;
+
+        for (let i = 0; i < totalData; i += CHUNK_SIZE) {
+            const chunk = parsedDataUpload.slice(i, i + CHUNK_SIZE);
+            pesanUpload.innerText = `Mengirim data ${uploadType}... (${Math.min(i + CHUNK_SIZE, totalData)} / ${totalData} baris)`;
+
+            try {
+                let response = await fetch(scriptURL, { 
+                    method: 'POST', body: JSON.stringify({ type: uploadType, data: chunk }), 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow'
+                });
+                let text = await response.text();
+                let resData = JSON.parse(text);
+                if (resData.status !== 'sukses') throw new Error(resData.pesan || "Gagal mengirim data");
+            } catch (err) {
+                pesanUpload.className = 'pesan gagal'; pesanUpload.innerText = 'Gagal terkirim: ' + err.message;
+                this.disabled = false; return;
+            }
+        }
+
+        pesanUpload.className = 'pesan berhasil'; pesanUpload.innerText = `Selesai! Berhasil unggah ${totalData} baris.`;
+        setTimeout(() => { pesanUpload.style.display = 'none'; tarikData(); this.disabled = false; }, 1500);
+    });
 
     window.onload = function() { 
         setRentangDefaultBulanIni(); 
