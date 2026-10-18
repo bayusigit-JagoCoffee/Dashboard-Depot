@@ -262,9 +262,26 @@
             <div class="filter-group"><label for="tglHitungan">Tanggal:</label><input type="date" id="tglHitungan" /></div>
             <div class="filter-group">
                 <label for="shiftHitungan">Pagi / Malam:</label>
-                <select id="shiftHitungan"><option value="Pagi">Pagi</option><option value="Malam">Malam</option></select>
+                <select id="shiftHitungan">
+                    <option value="Pagi">Pagi</option>
+                    <option value="Malam">Malam</option>
+                </select>
             </div>
-            <div class="filter-group"><label for="picName">Nama PIC:</label><input type="text" id="picName" placeholder="Ketik Nama PIC..." /></div>
+            <div class="filter-group">
+                <label for="picName">Nama PIC:</label>
+                <select id="picName">
+                    <option value="">-- Pilih PIC --</option>
+                    <option value="Dayyana">Dayyana</option>
+                    <option value="Dea">Dea</option>
+                    <option value="Nanda">Nanda</option>
+                    <option value="Regi">Regi</option>
+                    <option value="Ana">Ana</option>
+                    <option value="Aziza">Aziza</option>
+                    <option value="Tiara">Tiara</option>
+                    <option value="Bayu">Bayu</option>
+                    <option value="Nico">Nico</option>
+                </select>
+            </div>
         </div>
 
         <div class="instruction-banner">TULIS ANGKA DI KOLOM PINK SAJA LALU KLIK UPDATE</div>
@@ -299,37 +316,37 @@
         <div id="pesanNotifStokBebas" class="pesan"></div>
     </div>
 
-    <!-- SUB TAB 2: RIWAYAT HITUNGAN -->
-    <div id="subRiwayatStokBebas" class="tab-content-stokbebas" style="display:none; padding-top:20px;">
-        <div class="filter-box">
-            <div class="filter-group"><label for="filterTglRiwayat">Filter Tanggal:</label><input type="date" id="filterTglRiwayat" onchange="renderRiwayatStokBebas()" /></div>
-            <div class="filter-group">
-                <label for="filterShiftRiwayat">Shift:</label>
-                <select id="filterShiftRiwayat" onchange="renderRiwayatStokBebas()">
-                    <option value="ALL">Semua Shift</option>
-                    <option value="Pagi">Pagi</option>
-                    <option value="Malam">Malam</option>
-                </select>
-            </div>
-            <button class="btn-reset" onclick="resetFilterRiwayat()">Reset Filter</button>
-        </div>
-
-        <h3>Log Riwayat Hitungan Opname</h3>
-        <div class="table-wrapper" id="containerTblRiwayat"></div>
-    </div>
-
     <!-- SUB TAB 3: COMPARE STOK -->
     <div id="subCompareStokBebas" class="tab-content-stokbebas" style="display:none; padding-top:20px;">
         <div class="filter-box">
-            <div class="filter-group"><label for="tglCompareAwal">Tanggal Awal (Pagi/Malam):</label><input type="date" id="tglCompareAwal" /></div>
-            <div class="filter-group"><label for="tglCompareAkhir">Tanggal Pembanding:</label><input type="date" id="tglCompareAkhir" /></div>
+            <div class="filter-group">
+                <label for="tglCompareAwal">Tanggal Awal:</label>
+                <input type="date" id="tglCompareAwal" />
+            </div>
+            <div class="filter-group">
+                <label for="shiftCompareAwal">Shift Awal:</label>
+                <select id="shiftCompareAwal">
+                    <option value="Pagi">Pagi</option>
+                    <option value="Malam" selected>Malam</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="tglCompareAkhir">Tanggal Pembanding:</label>
+                <input type="date" id="tglCompareAkhir" />
+            </div>
+            <div class="filter-group">
+                <label for="shiftCompareAkhir">Shift Pembanding:</label>
+                <select id="shiftCompareAkhir">
+                    <option value="Pagi" selected>Pagi</option>
+                    <option value="Malam">Malam</option>
+                </select>
+            </div>
             <button class="btn-filter" onclick="prosesCompareStok()">⚖️ Bandingkan Stok</button>
         </div>
 
         <h3>Tabel Perbandingan (Compare) & Selisih Stok</h3>
         <div class="table-wrapper" id="containerTblCompare"></div>
     </div>
-</div>
 
 <script>
     const scriptURL = 'https://script.google.com/macros/s/AKfycbwv51aMRK1FBSHt-n33isoM-hrA9tCgZ5pVbZSwsC8_mNeegtp-xWB3BDLHHDnbTL4n/exec';
@@ -1188,24 +1205,27 @@
 
     function prosesCompareStok() {
         let tglAwal = document.getElementById('tglCompareAwal').value;
+        let shiftAwal = document.getElementById('shiftCompareAwal').value;
         let tglAkhir = document.getElementById('tglCompareAkhir').value;
+        let shiftAkhir = document.getElementById('shiftCompareAkhir').value;
         let container = document.getElementById('containerTblCompare');
 
         let mapAwal = {}, mapAkhir = {};
 
         rawRiwayatStokBebasData.forEach(r => {
             let tgl = normalizeToISO(r[1]);
+            let shift = r[2];
             let prod = r[4];
             let onHand = parseInt(r[7]) || 0;
 
-            if (tgl === tglAwal && prod) mapAwal[prod] = onHand;
-            if (tgl === tglAkhir && prod) mapAkhir[prod] = onHand;
+            if (tgl === tglAwal && shift === shiftAwal && prod) mapAwal[prod] = onHand;
+            if (tgl === tglAkhir && shift === shiftAkhir && prod) mapAkhir[prod] = onHand;
         });
 
         let html = `<table><thead><tr>
             <th class="text-left">Nama Produk</th>
-            <th>On Hand (${tglAwal})</th>
-            <th>On Hand (${tglAkhir})</th>
+            <th>On Hand (${tglAwal} - ${shiftAwal})</th>
+            <th>On Hand (${tglAkhir} - ${shiftAkhir})</th>
             <th>Selisih Stok</th>
         </tr></thead><tbody>`;
 
