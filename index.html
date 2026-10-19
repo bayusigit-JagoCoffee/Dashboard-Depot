@@ -109,7 +109,7 @@
     <div class="filter-box">
         <div class="filter-group"><label for="tglAwalSales">Dari Tanggal:</label><input type="date" id="tglAwalSales" /></div>
         <div class="filter-group"><label for="tglAkhirSales">Sampai Tanggal:</label><input type="date" id="tglAkhirSales" /></div>
-        <button class="btn-filter" onclick="tarikData()">Terapkan Filter</button>
+        <button class="btn-filter" onclick="terapkanFilterSales()">Terapkan Filter</button>
         <button class="btn-reset" onclick="resetFilterSales()">Reset All</button>
         <button class="btn-red" onclick="downloadPDFSales()">📄 Download Rekapan (PDF)</button>
     </div>
@@ -441,14 +441,12 @@
     ];
 
     const targetSuppliesItems = ['Plastik Sampah (Pcs)', 'Sarung Tangan Plastik (Pack)', 'Plastik Take Away M (Pack)', 'Plastik Take Away L (Pack)', 'Plastik Klip M (Pack)', 'Tissue Kotak Napkin (Pack)', 'Tutup Gelas Plastik (Pcs)'];
-    const monthMap = {'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'};
 
     let rawSalesData = [], rawSuppliesData = [], rawStokDepotData = [], rawRiwayatStokBebasData = [], filteredSuppliesData = [];
     let chartTotal = null, chartProduk = null, stokGudangUser = {};
 
     function normalizeToISO(raw) {
         if (!raw) return '';
-        // Jika berupa objek Date asli dari Google Sheets, konversi dengan mempertahankan tanggal lokalnya
         if (raw instanceof Date) {
             let y = raw.getFullYear();
             let m = String(raw.getMonth() + 1).padStart(2, '0');
@@ -457,11 +455,10 @@
         }
         
         let str = raw.toString().trim().replace(/^'/, '');
-        if (str.includes('T')) str = str.split('T')[0]; // Ambil bagian tanggalnya saja sebelum huruf T (UTC)
+        if (str.includes('T')) str = str.split('T')[0];
         let spaceParts = str.split(' ');
         let dateOnly = spaceParts[0];
         
-        // Pastikan format YYYY-MM-DD dikembalikan secara utuh tanpa terpotong zona waktu
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
             return dateOnly;
         }
@@ -560,7 +557,7 @@
         }
     }
 
-    function renderTabelRank(elementId, dataObj, labelNilai) {
+    function renderTabelRank(elementId, dataObj) {
         let sorted = Object.keys(dataObj).map(key => [key, dataObj[key]]).sort((a, b) => b[1] - a[1]);
         let html = '';
         sorted.forEach((item, index) => {
@@ -670,10 +667,10 @@
         let arrTgl = Array.from(setTanggal).sort();
         let arrProduk = Array.from(setProduk).sort();
 
-        renderTabelRank('tblRankSales', rankSales, 'Terjual');
-        renderTabelRank('tblRankLeftover', rankLeftover, 'Leftover');
-        renderTabelRank('tblRankWasteJagoan', rankWasteJagoan, 'Waste');
-        renderTabelRank('tblRankWasteProduk', rankWasteProduk, 'Waste');
+        renderTabelRank('tblRankSales', rankSales);
+        renderTabelRank('tblRankLeftover', rankLeftover);
+        renderTabelRank('tblRankWasteJagoan', rankWasteJagoan);
+        renderTabelRank('tblRankWasteProduk', rankWasteProduk);
 
         renderTabelPivotDibalik('containerTblSalesHarian', matrixSales, arrProduk, arrTgl);
         renderTabelPivotDibalik('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
