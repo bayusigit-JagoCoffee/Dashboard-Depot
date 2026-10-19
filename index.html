@@ -447,27 +447,29 @@
     let chartTotal = null, chartProduk = null, stokGudangUser = {};
 
     function normalizeToISO(raw) {
-        if(!raw) return '';
-        if(raw instanceof Date) {
+        if (!raw) return '';
+        // Jika berupa objek Date asli dari Google Sheets, konversi dengan mempertahankan tanggal lokalnya
+        if (raw instanceof Date) {
             let y = raw.getFullYear();
             let m = String(raw.getMonth() + 1).padStart(2, '0');
             let d = String(raw.getDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
         }
-        let str = raw.toString().trim().replace(/^'/, '');
-        if(str.includes('T')) str = str.split('T')[0];
-        let spaceParts = str.split(' ');
         
-        // Jika formatnya sudah YYYY-MM-DD (seperti '2026-10-18')
+        let str = raw.toString().trim().replace(/^'/, '');
+        if (str.includes('T')) str = str.split('T')[0]; // Ambil bagian tanggalnya saja sebelum huruf T (UTC)
+        let spaceParts = str.split(' ');
         let dateOnly = spaceParts[0];
+        
+        // Pastikan format YYYY-MM-DD dikembalikan secara utuh tanpa terpotong zona waktu
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
             return dateOnly;
         }
 
         let parts = dateOnly.split(/[-/.]/);
-        if(parts.length === 3) {
-            if(parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-            if(parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        if (parts.length === 3) {
+            if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
         return dateOnly;
     }
