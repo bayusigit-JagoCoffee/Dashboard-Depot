@@ -373,7 +373,7 @@
 
     const excludedProducts = [
         'hojicha', 'hojicha lychee tea', 'jago black coffee', 'jago black', 'jago cakep',
-        'jagoan cakep', 'jagoan kat', 'jagoan kilat', 'jago ngopi', 'jagoan ngopi',
+        'jagoan kat', 'jagoan kilat', 'jago ngopi', 'jagoan ngopi',
         'cakep', 'kilat', 'ngopi'
     ];
 
@@ -447,38 +447,34 @@
     let chartTotal = null, chartProduk = null, stokGudangUser = {};
 
     function normalizeToISO(raw) {
-    if (!raw) return '';
-    
-    // Jika input berupa Object Date dari Apps Script / Google Sheets
-    if (raw instanceof Date) {
-        let y = raw.getFullYear();
-        let m = String(raw.getMonth() + 1).padStart(2, '0');
-        let d = String(raw.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
+        if (!raw) return '';
+        
+        if (raw instanceof Date) {
+            let y = raw.getFullYear();
+            let m = String(raw.getMonth() + 1).padStart(2, '0');
+            let d = String(raw.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
 
-    let str = raw.toString().trim().replace(/^'/, '');
-    
-    // Buang jam, T, atau timezone (+0700, Z, dll) sepenuhnya tanpa konversi jam lokal
-    if (str.includes('T')) str = str.split('T')[0];
-    if (str.includes(' ')) str = str.split(' ')[0];
-    if (str.includes('+')) str = str.split('+')[0];
-    if (str.endsWith('Z')) str = str.replace('Z', '');
-    
-    let parts = str.split(/[-/.]/);
-    if (parts.length === 3) {
-        // Format YYYY-MM-DD
-        if (parts[0].length === 4) {
-            return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        let str = raw.toString().trim().replace(/^'/, '');
+        
+        if (str.includes('T')) str = str.split('T')[0];
+        if (str.includes(' ')) str = str.split(' ')[0];
+        if (str.includes('+')) str = str.split('+')[0];
+        if (str.endsWith('Z')) str = str.replace('Z', '');
+        
+        let parts = str.split(/[-/.]/);
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+            if (parts[2].length === 4) {
+                return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
         }
-        // Format DD-MM-YYYY
-        if (parts[2].length === 4) {
-            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        }
+        
+        return str;
     }
-    
-    return str;
-}
 
     function setRentangDefault9Bulan() {
         let now = new Date();
@@ -551,7 +547,7 @@
             let today = new Date();
             let tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('tglRencanaProduksi').value = tomorrow.toISOString().split('T')[0];
+            document.getElementById('tglRencanaProduksi').value = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,'0')}-${String(tomorrow.getDate()).padStart(2,'0')}`;
             hitungRekomendasiProduksi();
         } else if (mode === 'materials') {
             document.querySelectorAll('.btn-mode')[3].classList.add('active');
@@ -856,12 +852,14 @@
         let tglTarget = document.getElementById('tglRencanaProduksi').value;
         if (!tglTarget) return;
 
-        let dTarget = new Date(tglTarget);
+        let [y, m, d] = tglTarget.split('-').map(Number);
+        let dTarget = new Date(y, m - 1, d);
+
         let dH1 = new Date(dTarget); dH1.setDate(dH1.getDate() - 1);
         let dH7 = new Date(dTarget); dH7.setDate(dH7.getDate() - 7);
 
-        let strH1 = dH1.toISOString().split('T')[0];
-        let strH7 = dH7.toISOString().split('T')[0];
+        let strH1 = `${dH1.getFullYear()}-${String(dH1.getMonth() + 1).padStart(2, '0')}-${String(dH1.getDate()).padStart(2, '0')}`;
+        let strH7 = `${dH7.getFullYear()}-${String(dH7.getMonth() + 1).padStart(2, '0')}-${String(dH7.getDate()).padStart(2, '0')}`;
 
         let tbody = document.querySelector("#tblProductionPlanner tbody");
         tbody.innerHTML = "";
@@ -1038,7 +1036,7 @@
             let safetyStock = baseSafetyStock * (1 + bufferRate);
 
             let dateStockOut = addBusinessDays(today, Math.floor(coverHari));
-            let strStockOut = dateStockOut.toISOString().split('T')[0];
+            let strStockOut = `${dateStockOut.getFullYear()}-${String(dateStockOut.getMonth()+1).padStart(2,'0')}-${String(dateStockOut.getDate()).padStart(2,'0')}`;
 
             let saranBelanja = Math.max(0, (totalKebutuhan + safetyStock) - stokFisik);
 
