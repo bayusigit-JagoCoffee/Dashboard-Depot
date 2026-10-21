@@ -82,8 +82,8 @@
     <!-- UPLOAD SECTION -->
     <div class="upload-section" id="sectionUpload">
         <div class="radio-group">
-            <label><input type="radio" name="uploadType" value="sales" checked> Data Sales & Waste</label>
-            <label><input type="radio" name="uploadType" value="supplies"> Data Supplies</label>
+            <label><input type="radio" name="uploadType" value="sales" checked> Data Settlement Item (Sales_Log)</label>
+            <label><input type="radio" name="uploadType" value="supplies"> Data Supplies (Supplies_Log)</label>
         </div>
         <div class="file-input-wrapper">
             <input type="file" id="csvFile" accept=".csv">
@@ -341,7 +341,7 @@
 </div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbySBbCaQ6bcaAQDEiyipGHbnrtCgjbebbjGLCEGPZ_1JSAm_as1jGDZhh8XIPMGbIb6/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbwd_zDhlUcz-IVwb73uuNTcDl441T6ImajhxHA5L4i45IRGupmYXyOWDPQ34CB5NzZP/exec';
 
     const excludedProducts = [
         'hojicha', 'hojicha lychee tea', 'jago black coffee', 'jago black', 'jago cakep',
@@ -417,9 +417,10 @@
     let rawSalesData = [], rawSuppliesData = [], rawStokDepotData = [], rawRiwayatStokBebasData = [], filteredSuppliesData = [];
     let chartTotal = null, chartProduk = null, stokGudangUser = {};
 
+    // FUNGSI KHUSUS MENGONVERSI FORMAT "20 Oct 26 13:34" JADI "2026-10-20"
     function normalizeToISO(raw) {
         if (!raw) return '';
-        
+
         if (raw instanceof Date) {
             if (isNaN(raw.getTime())) return '';
             let y = raw.getFullYear();
@@ -431,28 +432,30 @@
         let str = raw.toString().trim().replace(/^'/, '');
         if (!str) return '';
 
-        if (str.includes('T')) str = str.split('T')[0];
-        if (str.includes(' ')) str = str.split(' ')[0];
+        const monthMap = {
+            'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+            'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+            'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+        };
 
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-            return str;
+        // PARSING TEXT DARI CSV MENTAH: "20 Oct 26 13:34"
+        let matchText = str.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{2,4})/);
+        if (matchText) {
+            let day = matchText[1].padStart(2, '0');
+            let monthStr = matchText[2].toLowerCase();
+            let yearStr = matchText[3];
+
+            if (yearStr.length === 2) yearStr = '20' + yearStr;
+
+            let month = monthMap[monthStr];
+            if (month) return `${yearStr}-${month}-${day}`;
         }
 
-        let parts = str.split(/[-/.]/);
-        if (parts.length === 3) {
-            let p0 = parts[0].trim();
-            let p1 = parts[1].trim();
-            let p2 = parts[2].trim();
-
-            if (p0.length === 4) {
-                return `${p0}-${p1.padStart(2, '0')}-${p2.padStart(2, '0')}`;
-            }
-            if (p2.length === 4) {
-                return `${p2}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
-            }
-            if (p2.length === 2) {
-                return `20${p2}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
-            }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        if (str.includes('T')) str = str.split('T')[0];
+        if (str.includes(' ')) {
+            let parts = str.split(' ');
+            if (/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) return parts[0];
         }
 
         return str;
@@ -634,7 +637,7 @@
         let setTanggal = new Set(), setProduk = new Set();
 
         data.forEach(row => {
-            let nama = row[0], tgl = normalizeToISO(row[2]), produk = row[3], sold = parseInt(row[4]) || 0, waste = parseInt(row[6]) || 0, leftover = parseInt(row[7]) || 0;
+            let nama = row[0], tgl = normalizeToISO(row[2]), produk = row[3], sold = parseInt(row[4]) || 0, waste = parseInt(row[5]) || 0, leftover = parseInt(row[7]) || 0;
             if(!nama || !tgl || !produk) return;
 
             let cleanProd = produk.toString().trim().toLowerCase();
@@ -1315,41 +1318,45 @@
             complete: function(results) {
                 parsedDataUpload = [];
                 results.data.forEach(row => {
-                    const getExactVal = (exactKeys) => {
-                        for(let k of Object.keys(row)) {
-                            let cleanK = k.trim().toLowerCase();
-                            for(let targetKey of exactKeys) {
-                                if(cleanK === targetKey.toLowerCase()) return row[k];
-                            }
+                    // PEMBACAAN VAL KOLOM DENGAN MATCHIING EKSPLISIT
+                    const getVal = (exactKey) => {
+                        for (let k of Object.keys(row)) {
+                            if (k.trim().toLowerCase() === exactKey.toLowerCase()) return row[k];
                         }
                         return '';
                     };
 
                     if (uploadType === "sales") {
-                        let id = getExactVal(['Jagoan ID', 'Jagoan Id', 'jagoan id']);
-                        if(id) {
-                            let nama = getExactVal(['Name', 'Nama']);
-                            let rawApprove = getExactVal(['Approved At', 'Approved_At', 'Tanggal', 'Approved_at', 'approved at']);
-                            let tanggal = normalizeToISO(rawApprove);
-                            let item = getExactVal(['Item Name', 'Item', 'Item_Name']);
-                            let sold = parseInt(getExactVal(['Sold'])) || 0;
-                            let exp = parseInt(getExactVal(['Expired'])) || 0;
-                            let left = parseInt(getExactVal(['Leftover'])) || 0;
-                            parsedDataUpload.push([nama, id, tanggal, item, sold, exp+left, exp, left]);
+                        let id = getVal('Jagoan ID'); // KOLOM B
+                        if (id) {
+                            let nama = getVal('Name'); // KOLOM A
+                            let rawApprove = getVal('Approved At'); // KOLOM E ("20 Oct 26 13:34")
+                            let tanggal = normalizeToISO(rawApprove); // DIUBAH JADI "2026-10-20"
+                            let item = getVal('Item Name'); // KOLOM F
+                            let sold = parseInt(getVal('Sold')) || 0; // KOLOM G
+                            let exp = parseInt(getVal('Expired')) || 0; // KOLOM I
+                            let left = parseInt(getVal('Leftover')) || 0; // KOLOM J
+                            let wasteTotal = exp + left;
+
+                            parsedDataUpload.push([nama, id, tanggal, item, sold, wasteTotal, exp, left]);
                         }
                     } else if (uploadType === "supplies") {
-                        let nama = getExactVal(['Name', 'Nama']);
-                        let item = getExactVal(['Item', 'Item Name', 'Item_Name']);
-                        let id = getExactVal(['Jagoan ID', 'Jagoan Id']);
-                        let rawApprove = getExactVal(['Approved At', 'Approved_At', 'Requested At', 'Tanggal']);
+                        let nama = getVal('Name');
+                        let item = getVal('Item Name') || getVal('Item');
+                        let id = getVal('Jagoan ID');
+                        let rawApprove = getVal('Approved At') || getVal('Requested At');
                         let tanggal = normalizeToISO(rawApprove);
-                        let appQty = parseInt(getExactVal(['Approved Quant', 'Approved Quantity', 'Approved_Quant', 'Requested Quan'])) || 0;
-                        if(item && isTargetItem(item)) { 
+                        let appQty = parseInt(getVal('Approved Quantity') || getVal('Approved Quant')) || 0;
+                        
+                        if (item && isTargetItem(item)) { 
                             parsedDataUpload.push([nama, item, tanggal, appQty, id]); 
                         }
                     }
                 });
-                if(parsedDataUpload.length > 0) document.getElementById('btnProses').disabled = false;
+
+                if (parsedDataUpload.length > 0) {
+                    document.getElementById('btnProses').disabled = false;
+                }
             }
         });
     });
