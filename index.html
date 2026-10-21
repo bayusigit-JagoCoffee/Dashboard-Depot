@@ -637,20 +637,34 @@
         let setTanggal = new Set(), setProduk = new Set();
 
         data.forEach(row => {
-            let nama = row[0], tgl = normalizeToISO(row[2]), produk = row[3], sold = parseInt(row[4]) || 0, waste = parseInt(row[5]) || 0, leftover = parseInt(row[7]) || 0;
-            if(!nama || !tgl || !produk) return;
+            let nama = row[0];
+            let tgl = normalizeToISO(row[2]);
+            let produk = row[3];
+            let sold = parseInt(row[4]) || 0;
+            
+            // =========================================================
+            // PERBAIKAN: Waste Jagoan & Produk Mengambil Kolom G (Expired / Index 6)
+            // =========================================================
+            let waste = parseInt(row[6]) || 0;  // Index 6 = Kolom G (Expired)
+            let leftover = parseInt(row[7]) || 0; // Index 7 = Kolom H (Leftover)
+
+            if (!nama || !tgl || !produk) return;
 
             let cleanProd = produk.toString().trim().toLowerCase();
             if (excludedProducts.some(ex => cleanProd.includes(ex))) return;
 
-            setTanggal.add(tgl); setProduk.add(produk);
+            setTanggal.add(tgl); 
+            setProduk.add(produk);
+
             rankSales[nama] = (rankSales[nama] || 0) + sold;
             rankLeftover[nama] = (rankLeftover[nama] || 0) + leftover;
-            rankWasteJagoan[nama] = (rankWasteJagoan[nama] || 0) + waste;
-            rankWasteProduk[produk] = (rankWasteProduk[produk] || 0) + waste;
-            if(!matrixSales[tgl]) matrixSales[tgl] = {};
+            rankWasteJagoan[nama] = (rankWasteJagoan[nama] || 0) + waste; // Mengakumulasi Expired (Kolom G)
+            rankWasteProduk[produk] = (rankWasteProduk[produk] || 0) + waste; // Mengakumulasi Expired (Kolom G)
+
+            if (!matrixSales[tgl]) matrixSales[tgl] = {};
             matrixSales[tgl][produk] = (matrixSales[tgl][produk] || 0) + sold;
-            if(!matrixWaste[tgl]) matrixWaste[tgl] = {};
+
+            if (!matrixWaste[tgl]) matrixWaste[tgl] = {};
             matrixWaste[tgl][produk] = (matrixWaste[tgl][produk] || 0) + waste;
         });
 
