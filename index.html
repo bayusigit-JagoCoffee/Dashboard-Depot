@@ -447,34 +447,52 @@
     let chartTotal = null, chartProduk = null, stokGudangUser = {};
 
     function normalizeToISO(raw) {
-        if (!raw) return '';
-        
-        if (raw instanceof Date) {
-            let y = raw.getFullYear();
-            let m = String(raw.getMonth() + 1).padStart(2, '0');
-            let d = String(raw.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        }
+    if (!raw) return '';
+    
+    // Jika format berupa Objek Date JS
+    if (raw instanceof Date) {
+        if (isNaN(raw.getTime())) return '';
+        let y = raw.getFullYear();
+        let m = String(raw.getMonth() + 1).padStart(2, '0');
+        let d = String(raw.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
 
-        let str = raw.toString().trim().replace(/^'/, '');
-        
-        if (str.includes('T')) str = str.split('T')[0];
-        if (str.includes(' ')) str = str.split(' ')[0];
-        if (str.includes('+')) str = str.split('+')[0];
-        if (str.endsWith('Z')) str = str.replace('Z', '');
-        
-        let parts = str.split(/[-/.]/);
-        if (parts.length === 3) {
-            if (parts[0].length === 4) {
-                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-            }
-            if (parts[2].length === 4) {
-                return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-        }
-        
+    let str = raw.toString().trim().replace(/^'/, '');
+    if (!str) return '';
+
+    // Ambil bagian tanggal saja jika ada ISO 'T' atau spasi jam/waktu
+    if (str.includes('T')) str = str.split('T')[0];
+    if (str.includes(' ')) str = str.split(' ')[0];
+
+    // Jika format sudah YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
         return str;
     }
+
+    // Pisahkan berdasarkan pemisah -, /, atau .
+    let parts = str.split(/[-/.]/);
+    if (parts.length === 3) {
+        let p0 = parts[0].trim();
+        let p1 = parts[1].trim();
+        let p2 = parts[2].trim();
+
+        // Format: YYYY/MM/DD atau YYYY-MM-DD
+        if (p0.length === 4) {
+            return `${p0}-${p1.padStart(2, '0')}-${p2.padStart(2, '0')}`;
+        }
+        // Format: DD/MM/YYYY atau DD-MM-YYYY
+        if (p2.length === 4) {
+            return `${p2}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
+        }
+        // Format singkat: DD/MM/YY (misal 20/10/26)
+        if (p2.length === 2) {
+            return `20${p2}-${p1.padStart(2, '0')}-${p0.padStart(2, '0')}`;
+        }
+    }
+
+    return str;
+}
 
     function setRentangDefault9Bulan() {
         let now = new Date();
@@ -1343,7 +1361,7 @@
                         let id = getVal(['Jagoan ID', 'Jagoan Id', 'jagoan id']);
                         if(id) {
                             let nama = getVal(['Name', 'Nama']);
-                            let rawApprove = getVal(['Approved At', 'Approved_At']);
+                            let rawApprove = getVal(['Approved At', 'Approved_At', 'Tanggal', 'Approved At']);
                             let tanggal = normalizeToISO(rawApprove);
                             let item = getVal(['Item Name', 'Item']);
                             let sold = parseInt(getVal(['Sold'])) || 0;
