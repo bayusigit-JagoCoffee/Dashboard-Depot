@@ -258,18 +258,32 @@
             <button class="tab-btn" onclick="bukaTabStokBebas(event, 'subCompareStokBebas')">Perbandingan Shift / Hari</button>
         </div>
 
-        <!-- SUB TAB INPUT -->
+        <!-- SUB TAB INPUT STOK BEBAS -->
         <div id="subInputStokBebas" class="tab-content-stokbebas">
             <div class="filter-container">
                 <label>Tanggal Opname:</label>
                 <input type="date" id="tglHitungan">
+                
                 <label>Shift:</label>
                 <select id="shiftHitungan">
                     <option value="Pagi">Pagi</option>
                     <option value="Malam">Malam</option>
                 </select>
-                <label>Nama PIC / Jagoan:</label>
-                <input type="text" id="picName" placeholder="Masukkan nama PIC">
+                
+                <!-- UBAH LABEL & DROPDOWN NAMA ADMIN -->
+                <label>Nama Admin:</label>
+                <select id="picName">
+                    <option value="" disabled selected>-- Pilih Admin --</option>
+                    <option value="Dayyana">Dayyana</option>
+                    <option value="Nanda">Nanda</option>
+                    <option value="Regi">Regi</option>
+                    <option value="Ana">Ana</option>
+                    <option value="Aziza">Aziza</option>
+                    <option value="Tiara">Tiara</option>
+                    <option value="Bayu">Bayu</option>
+                    <option value="Nico">Nico</option>
+                </select>
+
                 <button class="btn-submit" id="btnUpdateStokBebas" onclick="simpanStokBebas()">Simpan Opname ke Sheets</button>
             </div>
             <div class="pesan" id="pesanNotifStokBebas"></div>
