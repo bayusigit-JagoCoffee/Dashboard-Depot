@@ -1147,12 +1147,16 @@
         document.getElementById(`avail_stock_${idx}`).innerText = availStock;
     }
 
-    function simpanStokBebas() {
+   function simpanStokBebas() {
         const tgl = document.getElementById('tglHitungan').value;
         const shift = document.getElementById('shiftHitungan').value;
         const pic = document.getElementById('picName').value;
 
-        if (!tgl || !pic) { alert("Mohon lengkapi Tanggal dan Nama PIC!"); return; }
+        // Validasi jika Admin belum dipilih
+        if (!tgl || !pic) { 
+            alert("Mohon lengkapi Tanggal dan Pilih Nama Admin!"); 
+            return;  }
+
 
         let dataHitungan = [];
         productMasterStokBebas.forEach((p, idx) => {
