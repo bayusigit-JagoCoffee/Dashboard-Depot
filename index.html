@@ -221,6 +221,14 @@
     <!-- SECTION MATERIALS -->
     <div id="sectionMaterials" style="display: none;">
         <h3 style="margin-bottom: 15px; color: #2d3748;">Kebutuhan & Proyeksi Bahan Baku (RAW Materials)</h3>
+        
+        <!-- TOOL UPLOAD STOK FISIK BAHAN BAKU -->
+        <div class="filter-container" style="background: #ebf8ff; border: 1px solid #bee3f8; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+            <label style="font-weight: bold; color: #2b6cb0;">📂 Upload File Stok Fisik (CSV):</label>
+            <input type="file" id="csvStokFisik" accept=".csv" style="margin-left: 10px;">
+            <span id="fileNameStokFisik" style="font-size: 13px; color: #4a5568; font-weight: bold; margin-left: 10px;"></span>
+        </div>
+
         <div class="table-responsive">
             <table id="tblRawMaterials">
                 <thead>
@@ -270,7 +278,6 @@
                     <option value="Malam">Malam</option>
                 </select>
                 
-                <!-- UBAH LABEL & DROPDOWN NAMA ADMIN -->
                 <label>Nama Admin:</label>
                 <select id="picName">
                     <option value="" disabled selected>-- Pilih Admin --</option>
@@ -431,7 +438,6 @@
     let rawSalesData = [], rawSuppliesData = [], rawStokDepotData = [], rawRiwayatStokBebasData = [], filteredSuppliesData = [];
     let chartTotal = null, chartProduk = null, stokGudangUser = {};
 
-    // FUNGSI KHUSUS MENGONVERSI FORMAT "20 Oct 26 13:34" JADI "2026-10-20"
     function normalizeToISO(raw) {
         if (!raw) return '';
 
@@ -452,7 +458,6 @@
             'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
         };
 
-        // PARSING TEXT DARI CSV MENTAH: "20 Oct 26 13:34"
         let matchText = str.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{2,4})/);
         if (matchText) {
             let day = matchText[1].padStart(2, '0');
@@ -656,9 +661,7 @@
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
             
-            // =========================================================
-            // PERBAIKAN: Waste Jagoan & Produk Mengambil Kolom G (Expired / Index 6)
-            // =========================================================
+            // Waste Jagoan & Produk Mengambil Kolom G (Expired / Index 6)
             let waste = parseInt(row[6]) || 0;  // Index 6 = Kolom G (Expired)
             let leftover = parseInt(row[7]) || 0; // Index 7 = Kolom H (Leftover)
 
@@ -672,8 +675,8 @@
 
             rankSales[nama] = (rankSales[nama] || 0) + sold;
             rankLeftover[nama] = (rankLeftover[nama] || 0) + leftover;
-            rankWasteJagoan[nama] = (rankWasteJagoan[nama] || 0) + waste; // Mengakumulasi Expired (Kolom G)
-            rankWasteProduk[produk] = (rankWasteProduk[produk] || 0) + waste; // Mengakumulasi Expired (Kolom G)
+            rankWasteJagoan[nama] = (rankWasteJagoan[nama] || 0) + waste; 
+            rankWasteProduk[produk] = (rankWasteProduk[produk] || 0) + waste; 
 
             if (!matrixSales[tgl]) matrixSales[tgl] = {};
             matrixSales[tgl][produk] = (matrixSales[tgl][produk] || 0) + sold;
@@ -1147,16 +1150,15 @@
         document.getElementById(`avail_stock_${idx}`).innerText = availStock;
     }
 
-   function simpanStokBebas() {
+    function simpanStokBebas() {
         const tgl = document.getElementById('tglHitungan').value;
         const shift = document.getElementById('shiftHitungan').value;
         const pic = document.getElementById('picName').value;
 
-        // Validasi jika Admin belum dipilih
         if (!tgl || !pic) { 
             alert("Mohon lengkapi Tanggal dan Pilih Nama Admin!"); 
-            return;  }
-
+            return; 
+        }
 
         let dataHitungan = [];
         productMasterStokBebas.forEach((p, idx) => {
@@ -1350,7 +1352,6 @@
             complete: function(results) {
                 parsedDataUpload = [];
                 results.data.forEach(row => {
-                    // PEMBACAAN VAL KOLOM DENGAN MATCHIING EKSPLISIT
                     const getVal = (exactKey) => {
                         for (let k of Object.keys(row)) {
                             if (k.trim().toLowerCase() === exactKey.toLowerCase()) return row[k];
@@ -1389,6 +1390,72 @@
                 if (parsedDataUpload.length > 0) {
                     document.getElementById('btnProses').disabled = false;
                 }
+            }
+        });
+    });
+
+    // UPLOAD STOK FISIK BAHAN BAKU (CSV) WITH SUMIF
+    document.getElementById('csvStokFisik').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        document.getElementById('fileNameStokFisik').innerText = "File: " + file.name;
+
+        Papa.parse(file, {
+            header: false,
+            skipEmptyLines: true,
+            complete: function(results) {
+                let data = results.data;
+                if (!data || data.length <= 8) {
+                    alert("File kosong atau tidak memiliki data setelah baris ke-8!");
+                    return;
+                }
+
+                let sumifStok = {};
+
+                for (let i = 8; i < data.length; i++) {
+                    let row = data[i];
+                    if (!row || row.length < 3) continue;
+
+                    let rawName = row[2] ? row[2].toString().trim() : ''; // Kolom C (Index 2)
+                    let qtyStr = row[9] !== undefined ? row[9].toString().replace(/,/g, '').trim() : '0'; // Kolom J (Index 9)
+                    let qty = parseFloat(qtyStr) || 0;
+
+                    if (!rawName) continue;
+
+                    let cleanKey = rawName.toLowerCase().replace(/\s+/g, ' ');
+                    sumifStok[cleanKey] = (sumifStok[cleanKey] || 0) + qty;
+                }
+
+                let countMatched = 0;
+                for (let bahanMaster in masterBahanBaku) {
+                    let masterClean = bahanMaster.toLowerCase().replace(/\s+/g, ' ');
+
+                    let matchedVal = 0;
+                    let found = false;
+
+                    for (let keyCsv in sumifStok) {
+                        if (keyCsv === masterClean) {
+                            matchedVal += sumifStok[keyCsv];
+                            found = true;
+                        } else {
+                            let wordsMaster = masterClean.split(' ');
+                            let isMatch = wordsMaster.every(w => keyCsv.includes(w));
+                            if (isMatch) {
+                                matchedVal += sumifStok[keyCsv];
+                                found = true;
+                            }
+                        }
+                    }
+
+                    if (found) {
+                        stokGudangUser[bahanMaster] = matchedVal;
+                        countMatched++;
+                    }
+                }
+
+                renderTabelBahanBakuDirect();
+                alert(`✅ Stok Fisik berhasil diisi otomatis! (${countMatched} bahan baku berhasil dicocokkan)`);
             }
         });
     });
