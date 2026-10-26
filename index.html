@@ -1029,8 +1029,13 @@
             let m5 = (kebutuhanPerMinggu[5][bahan] || 0) / meta.konversiGr;
 
             let totalKebutuhan = m1 + m2 + m3 + m4 + m5;
-            let stokFisik = parseFloat(stokGudangUser[bahan]);
-            if (isNaN(stokFisik) || stokFisik < 0) stokFisik = 0;
+            
+            // Ambil input mentah stok fisik (Pcs / Jrg / Sack)
+            let stokInputRaw = parseFloat(stokGudangUser[bahan]);
+            if (isNaN(stokInputRaw) || stokInputRaw < 0) stokInputRaw = 0;
+
+            // Jika satuan master adalah Box, konversi stok fisik (Pcs) menjadi Box (1 Box = 12 Pcs)
+            let stokFisikBox = meta.satuan === 'Box' ? (stokInputRaw / 12) : stokInputRaw;
 
             let mingguBerjalan = 0;
             if (m1 > 0) mingguBerjalan = 1;
@@ -1043,7 +1048,9 @@
             let totalHariKerjaPembagi = mingguSelesai * 6;
 
             let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / totalHariKerjaPembagi) : 0;
-            let coverHari = kebutuhanHarian > 0 ? (stokFisik / kebutuhanHarian) : 0;
+            
+            // Hitung cover hari & minggu berdasarkan stokFisikBox
+            let coverHari = kebutuhanHarian > 0 ? (stokFisikBox / kebutuhanHarian) : 0;
             let coverMinggu = coverHari / 6;
 
             let leadTime = meta.leadTime || 3;
@@ -1055,10 +1062,11 @@
             let dateStockOut = addBusinessDays(today, Math.floor(coverHari));
             let strStockOut = `${dateStockOut.getFullYear()}-${String(dateStockOut.getMonth()+1).padStart(2,'0')}-${String(dateStockOut.getDate()).padStart(2,'0')}`;
 
-            let saranBelanja = Math.max(0, (totalKebutuhan + safetyStock) - stokFisik);
+            // Hitung saran belanja berdasarkan stokFisikBox (satuan Box)
+            let saranBelanja = Math.max(0, (totalKebutuhan + safetyStock) - stokFisikBox);
 
             let statusBadge = '';
-            if (stokFisik < safetyStock || coverHari < leadTime) {
+            if (stokFisikBox < safetyStock || coverHari < leadTime) {
                 statusBadge = `<span style="background-color:#e74c3c; color:white; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🔴 Kritis (Restock)</span>`;
             } else if (coverHari <= (leadTime + 3)) {
                 statusBadge = `<span style="background-color:#f1c40f; color:#333; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🟡 Menipis</span>`;
@@ -1080,7 +1088,8 @@
                     <td><b style="color:#2980b9;">${totalKebutuhan.toFixed(2)}</b></td>
                     <td><b>${meta.satuan}</b></td>
                     <td>
-                        <input type="number" value="${stokFisik.toFixed(2)}" min="0" step="0.1" style="width:65px; text-align:center; font-weight:bold;" oninput="stokGudangUser['${bahan}']=parseFloat(this.value)||0; renderTabelBahanBakuDirect();" />
+                        <input type="number" value="${stokInputRaw.toFixed(2)}" min="0" step="0.1" style="width:75px; text-align:center; font-weight:bold;" oninput="stokGudangUser['${bahan}']=parseFloat(this.value)||0; renderTabelBahanBakuDirect();" />
+                        ${meta.satuan === 'Box' ? `<br><small style="color:#718096;">(= ${stokFisikBox.toFixed(2)} Box)</small>` : ''}
                     </td>
                     <td><b style="color:#d35400;">${safetyStock.toFixed(2)}</b></td>
                     <td>${kebutuhanHarian.toFixed(2)}</td>
