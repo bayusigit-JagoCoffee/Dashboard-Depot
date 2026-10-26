@@ -372,6 +372,7 @@
         'cakep', 'kilat', 'ngopi'
     ];
 
+    // Master Bahan Baku yang sudah disesuaikan
     const masterBahanBaku = {
         'Arabica Coffee Beans 1000gr': { konversiGr: 6000, satuan: 'Box', leadTime: 10, category: 'fast' },
         'Aren Sugar': { konversiGr: 5300, satuan: 'Jrg', leadTime: 5, category: 'fast' },
@@ -389,9 +390,9 @@
         'Oatside Barista Blend 1000ml': { konversiGr: 1000, satuan: 'Pcs', leadTime: 3, category: 'fast' },
         'Orange Valencia NFC': { konversiGr: 5000, satuan: 'Jrg', leadTime: 7, category: 'slow' },
         'Robusta Coffee Beans 1000gr': { konversiGr: 5000, satuan: 'Box', leadTime: 10, category: 'fast' },
-        'Susu UHT Diamond 1000ml': { konversiGr: 12000, satuan: 'Box', leadTime: 3, category: 'fast' },
+        'Susu UHT Diamond 1000ml': { konversiGr: 12000, satuan: 'Box', pcsPerBox: 12, leadTime: 3, category: 'fast' },
         'Syrup Salted Caramel': { konversiGr: 5000, satuan: 'Jrg', leadTime: 5, category: 'slow' },
-        'Syrup Vanilla': { konversiGr: 6960, satuan: 'Box', leadTime: 5, category: 'slow' }
+        'Syrup Vanilla': { konversiGr: 6500, satuan: 'Jrg', leadTime: 5, category: 'slow' }
     };
 
     const resepBahanBakuPerCup = {
@@ -1030,12 +1031,14 @@
 
             let totalKebutuhan = m1 + m2 + m3 + m4 + m5;
             
-            // Ambil input mentah stok fisik (Pcs / Jrg / Sack)
+            // Ambil input mentah stok fisik
             let stokInputRaw = parseFloat(stokGudangUser[bahan]);
             if (isNaN(stokInputRaw) || stokInputRaw < 0) stokInputRaw = 0;
 
-            // Jika satuan master adalah Box, konversi stok fisik (Pcs) menjadi Box (1 Box = 12 Pcs)
-            let stokFisikBox = meta.satuan === 'Box' ? (stokInputRaw / 12) : stokInputRaw;
+            // KONVERSI KHUSUS HANYA UNTUK ITEM YANG MEMILIKI pcsPerBox (seperti Susu UHT Diamond)
+            let isConvertedItem = !!meta.pcsPerBox;
+            let pcsDivider = meta.pcsPerBox || 1;
+            let stokFisikKalkulasi = isConvertedItem ? (stokInputRaw / pcsDivider) : stokInputRaw;
 
             let mingguBerjalan = 0;
             if (m1 > 0) mingguBerjalan = 1;
@@ -1049,8 +1052,8 @@
 
             let kebutuhanHarian = totalKebutuhan > 0 ? (totalKebutuhan / totalHariKerjaPembagi) : 0;
             
-            // Hitung cover hari & minggu berdasarkan stokFisikBox
-            let coverHari = kebutuhanHarian > 0 ? (stokFisikBox / kebutuhanHarian) : 0;
+            // Hitung cover hari & minggu berdasarkan stokFisikKalkulasi
+            let coverHari = kebutuhanHarian > 0 ? (stokFisikKalkulasi / kebutuhanHarian) : 0;
             let coverMinggu = coverHari / 6;
 
             let leadTime = meta.leadTime || 3;
@@ -1062,11 +1065,11 @@
             let dateStockOut = addBusinessDays(today, Math.floor(coverHari));
             let strStockOut = `${dateStockOut.getFullYear()}-${String(dateStockOut.getMonth()+1).padStart(2,'0')}-${String(dateStockOut.getDate()).padStart(2,'0')}`;
 
-            // Hitung saran belanja berdasarkan stokFisikBox (satuan Box)
-            let saranBelanja = Math.max(0, (totalKebutuhan + safetyStock) - stokFisikBox);
+            // Hitung saran belanja
+            let saranBelanja = Math.max(0, (totalKebutuhan + safetyStock) - stokFisikKalkulasi);
 
             let statusBadge = '';
-            if (stokFisikBox < safetyStock || coverHari < leadTime) {
+            if (stokFisikKalkulasi < safetyStock || coverHari < leadTime) {
                 statusBadge = `<span style="background-color:#e74c3c; color:white; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🔴 Kritis (Restock)</span>`;
             } else if (coverHari <= (leadTime + 3)) {
                 statusBadge = `<span style="background-color:#f1c40f; color:#333; padding:3px 6px; border-radius:4px; font-weight:bold; font-size:10px;">🟡 Menipis</span>`;
@@ -1089,7 +1092,7 @@
                     <td><b>${meta.satuan}</b></td>
                     <td>
                         <input type="number" value="${stokInputRaw.toFixed(2)}" min="0" step="0.1" style="width:75px; text-align:center; font-weight:bold;" oninput="stokGudangUser['${bahan}']=parseFloat(this.value)||0; renderTabelBahanBakuDirect();" />
-                        ${meta.satuan === 'Box' ? `<br><small style="color:#718096;">(= ${stokFisikBox.toFixed(2)} Box)</small>` : ''}
+                        ${isConvertedItem ? `<br><small style="color:#718096;">(= ${stokFisikKalkulasi.toFixed(2)} ${meta.satuan})</small>` : ''}
                     </td>
                     <td><b style="color:#d35400;">${safetyStock.toFixed(2)}</b></td>
                     <td>${kebutuhanHarian.toFixed(2)}</td>
