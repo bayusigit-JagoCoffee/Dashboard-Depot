@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Operational Depot</title>
+    <!-- LIBRARY UNTUK PARSE CSV & EXCEL (XLSX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -224,8 +226,8 @@
         
         <!-- TOOL UPLOAD STOK FISIK BAHAN BAKU -->
         <div class="filter-container" style="background: #ebf8ff; border: 1px solid #bee3f8; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
-            <label style="font-weight: bold; color: #2b6cb0;">📂 Upload File Stok Fisik (CSV):</label>
-            <input type="file" id="csvStokFisik" accept=".csv" style="margin-left: 10px;">
+            <label style="font-weight: bold; color: #2b6cb0;">📂 Upload File Stok Fisik (XLSX / CSV):</label>
+            <input type="file" id="csvStokFisik" accept=".xlsx, .xls, .csv" style="margin-left: 10px;">
             <span id="fileNameStokFisik" style="font-size: 13px; color: #4a5568; font-weight: bold; margin-left: 10px;"></span>
         </div>
 
@@ -661,9 +663,8 @@
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
             
-            // Waste Jagoan & Produk Mengambil Kolom G (Expired / Index 6)
-            let waste = parseInt(row[6]) || 0;  // Index 6 = Kolom G (Expired)
-            let leftover = parseInt(row[7]) || 0; // Index 7 = Kolom H (Leftover)
+            let waste = parseInt(row[6]) || 0; 
+            let leftover = parseInt(row[7]) || 0; 
 
             if (!nama || !tgl || !produk) return;
 
@@ -1394,18 +1395,24 @@
         });
     });
 
-    // UPLOAD STOK FISIK BAHAN BAKU (CSV) WITH SUMIF
+    // UPLOAD STOK FISIK BAHAN BAKU (MENDUKUNG XLSX, XLS, DAN CSV DENGAN SUMIF)
     document.getElementById('csvStokFisik').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
 
         document.getElementById('fileNameStokFisik').innerText = "File: " + file.name;
 
-        Papa.parse(file, {
-            header: false,
-            skipEmptyLines: true,
-            complete: function(results) {
-                let data = results.data;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const buffer = evt.target.result;
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Konversi sheet ke array 2D
+                let data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
                 if (!data || data.length <= 8) {
                     alert("File kosong atau tidak memiliki data setelah baris ke-8!");
                     return;
@@ -1413,6 +1420,7 @@
 
                 let sumifStok = {};
 
+                // Abaikan baris 1-8 (Loop mulai dari indeks 8 = baris ke-9)
                 for (let i = 8; i < data.length; i++) {
                     let row = data[i];
                     if (!row || row.length < 3) continue;
@@ -1455,9 +1463,14 @@
                 }
 
                 renderTabelBahanBakuDirect();
-                alert(`✅ Stok Fisik berhasil diisi otomatis! (${countMatched} bahan baku berhasil dicocokkan)`);
+                alert(`✅ Stok Fisik berhasil diisi otomatis dari file Excel/CSV! (${countMatched} bahan baku berhasil dicocokkan)`);
+            } catch (err) {
+                console.error("Gagal membaca file:", err);
+                alert("❌ Gagal membaca file Excel. Pastikan format file valid!");
             }
-        });
+        };
+
+        reader.readAsArrayBuffer(file);
     });
 
     document.getElementById('btnProses').addEventListener('click', async function() {
