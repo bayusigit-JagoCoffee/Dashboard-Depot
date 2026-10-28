@@ -495,15 +495,12 @@
         return str;
     }
 
-    function setRentangDefault9Bulan() {
+    function setDefaultBulanBerjalan() {
         let now = new Date();
-        let lookback = new Date(now.getFullYear(), now.getMonth() - 9, 1);
-        let y = lookback.getFullYear();
-        let m = String(lookback.getMonth() + 1).padStart(2, '0');
-        let firstDayStr = `${y}-${m}-01`;
-
         let yearToday = now.getFullYear();
         let monthToday = String(now.getMonth() + 1).padStart(2, '0');
+        let firstDayStr = `${yearToday}-${monthToday}-01`;
+
         let dayToday = String(now.getDate()).padStart(2, '0');
         let todayStr = `${yearToday}-${monthToday}-${dayToday}`;
 
@@ -663,7 +660,7 @@
     }
 
     function resetFilterSales() {
-        setRentangDefault9Bulan();
+        setDefaultBulanBerjalan();
         tarikData();
     }
 
@@ -829,7 +826,7 @@
     }
 
     function resetFilterSupplies() {
-        setRentangDefault9Bulan();
+        setDefaultBulanBerjalan();
         tarikData();
     }
 
@@ -1425,9 +1422,8 @@
 
         if (!tglAwal) {
             let now = new Date();
-            let lookback = new Date(now.getFullYear(), now.getMonth() - 9, 1);
-            let y = lookback.getFullYear();
-            let m = String(lookback.getMonth() + 1).padStart(2, '0');
+            let y = now.getFullYear();
+            let m = String(now.getMonth() + 1).padStart(2, '0');
             tglAwal = `${y}-${m}-01`;
         }
 
@@ -1618,7 +1614,7 @@
     });
 
     window.onload = function() { 
-        setRentangDefault9Bulan(); 
+        setDefaultBulanBerjalan(); 
         tarikData(); 
     };
 </script>
