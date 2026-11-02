@@ -87,6 +87,22 @@
             <label><input type="radio" name="uploadType" value="sales" checked> Data Settlement Item (Sales_Log)</label>
             <label><input type="radio" name="uploadType" value="supplies"> Data Supplies (Supplies_Log)</label>
         </div>
+
+        <!-- DROPDOWN NAMA PIC UPLOAD -->
+        <div style="margin-bottom: 15px;">
+            <label style="font-weight: bold; font-size: 13px; margin-right: 8px; color: #4a5568;">PIC Upload:</label>
+            <select id="picUpload" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e0; font-weight: bold;">
+                <option value="" disabled selected>-- Pilih PIC --</option>
+                <option value="Dayyana">Dayyana</option>
+                <option value="Nanda">Nanda</option>
+                <option value="Regi">Regi</option>
+                <option value="Ana">Ana</option>
+                <option value="Aziza">Aziza</option>
+                <option value="Tiara">Tiara</option>
+                <option value="Bayu">Bayu</option>
+            </select>
+        </div>
+
         <div class="file-input-wrapper">
             <input type="file" id="csvFile" accept=".csv">
             <span id="fileName" style="font-size: 13px; color: #666; margin-left: 10px;"></span>
@@ -377,7 +393,7 @@
 </div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwd_zDhlUcz-IVwb73uuNTcDl441T6ImajhxHA5L4i45IRGupmYXyOWDPQ34CB5NzZP/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbzR__4o1e3GqRA1jHoZv92o5WfMlWTmC0Rl8Ec43ld1HBvDG4yn5D9mRWLQLWj6jQ/exec';
 
     const excludedProducts = [
         'hojicha', 'hojicha lychee tea', 'jago black coffee', 'jago black', 'jago cakep',
@@ -675,7 +691,7 @@
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
             
-            let waste = parseInt(row[6]) || 0; 
+            let waste = parseInt(row[5]) || 0; 
             let leftover = parseInt(row[7]) || 0; 
 
             if (!nama || !tgl || !produk) return;
@@ -711,7 +727,6 @@
         renderTabelPivotDibalik('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
         renderGrafikSales(matrixSales, arrProduk, arrTgl);
 
-        // Populasikan Datalist Pilihan Jagoan di Tab Leftover
         let datalistLeftover = document.getElementById('listJagoanLeftoverOptions');
         if (datalistLeftover) {
             datalistLeftover.innerHTML = '';
@@ -1519,7 +1534,6 @@
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 
-                // Konversi sheet ke array 2D
                 let data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
                 if (!data || data.length <= 8) {
@@ -1529,13 +1543,12 @@
 
                 let sumifStok = {};
 
-                // Abaikan baris 1-8 (Loop mulai dari indeks 8 = baris ke-9)
                 for (let i = 8; i < data.length; i++) {
                     let row = data[i];
                     if (!row || row.length < 3) continue;
 
-                    let rawName = row[2] ? row[2].toString().trim() : ''; // Kolom C (Index 2)
-                    let qtyStr = row[9] !== undefined ? row[9].toString().replace(/,/g, '').trim() : '0'; // Kolom J (Index 9)
+                    let rawName = row[2] ? row[2].toString().trim() : ''; 
+                    let qtyStr = row[9] !== undefined ? row[9].toString().replace(/,/g, '').trim() : '0'; 
                     let qty = parseFloat(qtyStr) || 0;
 
                     if (!rawName) continue;
@@ -1582,7 +1595,14 @@
         reader.readAsArrayBuffer(file);
     });
 
+    // UPLOAD DATA CSV PENJUALAN / SUPPLIES DENGAN PIC UPLOAD
     document.getElementById('btnProses').addEventListener('click', async function() {
+        let picVal = document.getElementById('picUpload').value;
+        if (!picVal) {
+            alert("Mohon pilih nama PIC Upload terlebih dahulu!");
+            return;
+        }
+
         this.disabled = true;
         let pesanUpload = document.getElementById('pesanUpload');
         pesanUpload.className = 'pesan proses'; pesanUpload.style.display = 'block';
@@ -1597,8 +1617,14 @@
 
             try {
                 let response = await fetch(scriptURL, { 
-                    method: 'POST', body: JSON.stringify({ type: uploadType, data: chunk }), 
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow'
+                    method: 'POST', 
+                    body: JSON.stringify({ 
+                        type: uploadType, 
+                        pic: picVal,
+                        data: chunk 
+                    }), 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                    redirect: 'follow'
                 });
                 let text = await response.text();
                 let resData = JSON.parse(text);
