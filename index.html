@@ -393,7 +393,7 @@
 </div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwoT4-UVAYbg8ORhTRiIEkNYAMxH4YJZh37QKqXgC40dENsYy2iPfX33fVFvOEp_Ic/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxzPsJbk67qZBCfcheTyjL8huqIgD-XiqP5yY6XhD0nXQC3P8Dua_Et1SAzCrEuMT1Z/exec';
 
     const excludedProducts = [
         'hojicha', 'hojicha lychee tea', 'jago black coffee', 'jago black', 'jago cakep',
@@ -680,6 +680,7 @@
         tarikData();
     }
 
+    // --- PROSES DATA SALES & WASTE (MURNI EXPIRED DARI KOLOM G / INDEX 6) ---
     function prosesDanTampilkanSales(data) {
         let rankSales = {}, rankLeftover = {}, rankWasteJagoan = {}, rankWasteProduk = {};
         let matrixSales = {}, matrixWaste = {};
@@ -691,7 +692,10 @@
             let produk = row[3];
             let sold = parseInt(row[4]) || 0;
             
-            let waste = parseInt(row[5]) || 0; 
+            // row[5] = Unsold
+            // row[6] = Expired (Murni Waste dari Kolom G)
+            // row[7] = Leftover (Kolom H)
+            let waste = parseInt(row[6]) || 0; 
             let leftover = parseInt(row[7]) || 0; 
 
             if (!nama || !tgl || !produk) return;
@@ -1494,9 +1498,9 @@
                             let sold = parseInt(getVal('Sold')) || 0; // KOLOM G
                             let exp = parseInt(getVal('Expired')) || 0; // KOLOM I
                             let left = parseInt(getVal('Leftover')) || 0; // KOLOM J
-                            let wasteTotal = exp + left;
+                            let unsoldTotal = exp + left; // Kolom F (Unsold)
 
-                            parsedDataUpload.push([nama, id, tanggal, item, sold, wasteTotal, exp, left]);
+                            parsedDataUpload.push([nama, id, tanggal, item, sold, unsoldTotal, exp, left]);
                         }
                     } else if (uploadType === "supplies") {
                         let nama = getVal('Name');
