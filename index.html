@@ -179,24 +179,41 @@
             <div class="table-responsive" id="containerTblWasteHarian"></div>
         </div>
 
+        <!-- TAB LEFTOVER PER JAGOAN -->
         <div id="tabLeftoverJagoan" class="tab-content">
-            <div class="filter-container" style="background: #fff; border: 1px solid #e2e8f0;">
-                <label>Cari Jagoan:</label>
-                <input type="text" id="searchJagoanLeftover" placeholder="Ketik nama Jagoan..." list="listJagoanLeftoverOptions" oninput="renderRekapJagoanLeftover()">
-                <datalist id="listJagoanLeftoverOptions"></datalist>
-                <button class="btn-reset" onclick="resetSearchJagoanLeftover()">Reset Cari</button>
+            <div class="filter-container" style="background: #fff; border: 1px solid #e2e8f0; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <label>Cari Jagoan:</label>
+                    <input type="text" id="searchJagoanLeftover" placeholder="Ketik nama Jagoan..." list="listJagoanLeftoverOptions" oninput="renderRekapJagoanLeftover()" style="margin-left: 5px;">
+                    <datalist id="listJagoanLeftoverOptions"></datalist>
+                </div>
+                <div>
+                    <label>Filter Produk:</label>
+                    <select id="filterProdukLeftover" onchange="renderRekapJagoanLeftover()" style="margin-left: 5px; min-width: 180px;">
+                        <option value="ALL">-- Semua Produk (Tabel Utama) --</option>
+                    </select>
+                </div>
+                <button class="btn-reset" onclick="resetFilterLeftover()">Reset Filter</button>
             </div>
-            <h3 id="titleTblRekapLeftover" style="font-size: 15px; margin-top: 10px; color: #2d3748;">Detail Leftover per Tanggal</h3>
+            <h3 id="titleTblRekapLeftover" style="font-size: 15px; margin-top: 10px; color: #2d3748;">Tabel Rekapitulasi Leftover Per Jagoan</h3>
             <div class="table-responsive" id="containerTblLeftoverJagoan"></div>
         </div>
 
         <!-- TAB WASTE PER JAGOAN -->
         <div id="tabWasteJagoan" class="tab-content">
-            <div class="filter-container" style="background: #fff; border: 1px solid #e2e8f0;">
-                <label>Cari Jagoan:</label>
-                <input type="text" id="searchJagoanWaste" placeholder="Ketik nama Jagoan..." list="listJagoanWasteOptions" oninput="renderRekapJagoanWaste()">
-                <datalist id="listJagoanWasteOptions"></datalist>
-                <button class="btn-reset" onclick="resetSearchJagoanWaste()">Reset Cari</button>
+            <div class="filter-container" style="background: #fff; border: 1px solid #e2e8f0; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <label>Cari Jagoan:</label>
+                    <input type="text" id="searchJagoanWaste" placeholder="Ketik nama Jagoan..." list="listJagoanWasteOptions" oninput="renderRekapJagoanWaste()" style="margin-left: 5px;">
+                    <datalist id="listJagoanWasteOptions"></datalist>
+                </div>
+                <div>
+                    <label>Filter Produk:</label>
+                    <select id="filterProdukWaste" onchange="renderRekapJagoanWaste()" style="margin-left: 5px; min-width: 180px;">
+                        <option value="ALL">-- Semua Produk (Tabel Utama) --</option>
+                    </select>
+                </div>
+                <button class="btn-reset" onclick="resetFilterWaste()">Reset Filter</button>
             </div>
             <h3 id="titleTblRekapWasteJagoan" style="font-size: 15px; margin-top: 10px; color: #2d3748;">Tabel Rekapitulasi Waste Per Jagoan</h3>
             <div class="table-responsive" id="containerTblWasteJagoanDetail"></div>
@@ -711,6 +728,9 @@
         renderTabelPivotDibalik('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
         renderGrafikSales(matrixSales, arrProduk, arrTgl);
 
+        // Update dropdown filter produk di tab Leftover & Waste per Jagoan
+        updateDropdownFilterProduk(arrProduk);
+
         let datalistLeftover = document.getElementById('listJagoanLeftoverOptions');
         if (datalistLeftover) {
             datalistLeftover.innerHTML = '';
@@ -725,14 +745,72 @@
         renderRekapJagoanWaste();
     }
 
-    function resetSearchJagoanLeftover() { document.getElementById('searchJagoanLeftover').value = ''; renderRekapJagoanLeftover(); }
-    function resetSearchJagoanWaste() { document.getElementById('searchJagoanWaste').value = ''; renderRekapJagoanWaste(); }
+    function updateDropdownFilterProduk(arrProduk) {
+        let selLeftover = document.getElementById('filterProdukLeftover');
+        let selWaste = document.getElementById('filterProdukWaste');
+        
+        let curLeft = selLeftover ? selLeftover.value : 'ALL';
+        let curWaste = selWaste ? selWaste.value : 'ALL';
+
+        let optionsHtml = '<option value="ALL">-- Semua Produk (Tabel Utama) --</option>';
+        arrProduk.forEach(p => {
+            optionsHtml += `<option value="${p}">${p}</option>`;
+        });
+
+        if (selLeftover) { selLeftover.innerHTML = optionsHtml; selLeftover.value = curLeft; }
+        if (selWaste) { selWaste.innerHTML = optionsHtml; selWaste.value = curWaste; }
+    }
+
+    function resetFilterLeftover() {
+        document.getElementById('searchJagoanLeftover').value = '';
+        document.getElementById('filterProdukLeftover').value = 'ALL';
+        renderRekapJagoanLeftover();
+    }
+
+    function resetFilterWaste() {
+        document.getElementById('searchJagoanWaste').value = '';
+        document.getElementById('filterProdukWaste').value = 'ALL';
+        renderRekapJagoanWaste();
+    }
 
     function renderRekapJagoanLeftover() {
         let queryNama = document.getElementById('searchJagoanLeftover') ? document.getElementById('searchJagoanLeftover').value.trim().toLowerCase() : '';
+        let filterProd = document.getElementById('filterProdukLeftover') ? document.getElementById('filterProdukLeftover').value : 'ALL';
         let titleEl = document.getElementById('titleTblRekapLeftover');
         let dataToUse = filteredSalesData.length > 0 ? filteredSalesData : rawSalesData;
 
+        // Jika filter produk dipilih (bukan ALL)
+        if (filterProd !== 'ALL') {
+            titleEl.innerText = `Peringkat Leftover Jagoan untuk Produk: ${filterProd}`;
+            let mapJagoanProd = {};
+
+            dataToUse.forEach(row => {
+                let nama = row[0], produk = row[3], leftover = parseInt(row[7]) || 0;
+                if (!nama || !produk || excludedProducts.some(ex => produk.toLowerCase().trim().includes(ex))) return;
+                
+                if (produk === filterProd) {
+                    if (!queryNama || nama.toLowerCase().includes(queryNama)) {
+                        mapJagoanProd[nama] = (mapJagoanProd[nama] || 0) + leftover;
+                    }
+                }
+            });
+
+            let sortedArr = Object.keys(mapJagoanProd).map(j => [j, mapJagoanProd[j]]).sort((a, b) => b[1] - a[1]);
+            let html = `<table><thead><tr><th>Rank</th><th class="text-left">Nama Jagoan</th><th>Produk: ${filterProd}</th></tr></thead><tbody>`;
+            
+            if (sortedArr.length === 0) {
+                html += `<tr><td colspan="3" style="color:#7f8c8d; padding:15px;">Tidak ada data untuk filter ini</td></tr>`;
+            } else {
+                sortedArr.forEach((item, idx) => {
+                    html += `<tr><td><span class="badge-rank">${idx+1}</span></td><td class="text-left">${item[0]}</td><td><b>${item[1]}</b></td></tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('containerTblLeftoverJagoan').innerHTML = html;
+            return;
+        }
+
+        // Tampilan Standar (Semua Produk)
         if (queryNama !== '') {
             titleEl.innerText = `Detail Leftover per Tanggal - ${queryNama}`;
             let matrixLeftover = {}, setTanggal = new Set(), setProduk = new Set();
@@ -784,9 +862,42 @@
 
     function renderRekapJagoanWaste() {
         let queryNama = document.getElementById('searchJagoanWaste') ? document.getElementById('searchJagoanWaste').value.trim().toLowerCase() : '';
+        let filterProd = document.getElementById('filterProdukWaste') ? document.getElementById('filterProdukWaste').value : 'ALL';
         let titleEl = document.getElementById('titleTblRekapWasteJagoan');
         let dataToUse = filteredSalesData.length > 0 ? filteredSalesData : rawSalesData;
 
+        // Jika filter produk dipilih (bukan ALL)
+        if (filterProd !== 'ALL') {
+            titleEl.innerText = `Peringkat Waste Jagoan untuk Produk: ${filterProd}`;
+            let mapJagoanProd = {};
+
+            dataToUse.forEach(row => {
+                let nama = row[0], produk = row[3], waste = parseInt(row[6]) || 0;
+                if (!nama || !produk || excludedProducts.some(ex => produk.toLowerCase().trim().includes(ex))) return;
+                
+                if (produk === filterProd) {
+                    if (!queryNama || nama.toLowerCase().includes(queryNama)) {
+                        mapJagoanProd[nama] = (mapJagoanProd[nama] || 0) + waste;
+                    }
+                }
+            });
+
+            let sortedArr = Object.keys(mapJagoanProd).map(j => [j, mapJagoanProd[j]]).sort((a, b) => b[1] - a[1]);
+            let html = `<table><thead><tr><th>Rank</th><th class="text-left">Nama Jagoan</th><th>Produk: ${filterProd}</th></tr></thead><tbody>`;
+            
+            if (sortedArr.length === 0) {
+                html += `<tr><td colspan="3" style="color:#7f8c8d; padding:15px;">Tidak ada data untuk filter ini</td></tr>`;
+            } else {
+                sortedArr.forEach((item, idx) => {
+                    html += `<tr><td><span class="badge-rank">${idx+1}</span></td><td class="text-left">${item[0]}</td><td><b>${item[1]}</b></td></tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('containerTblWasteJagoanDetail').innerHTML = html;
+            return;
+        }
+
+        // Tampilan Standar (Semua Produk)
         if (queryNama !== '') {
             titleEl.innerText = `Detail Waste per Tanggal - ${queryNama}`;
             let matrixWaste = {}, setTanggal = new Set(), setProduk = new Set();
