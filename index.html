@@ -146,6 +146,7 @@
             <button class="tab-btn" onclick="bukaTab(event, 'tabSalesHarian')">Sales Harian</button>
             <button class="tab-btn" onclick="bukaTab(event, 'tabWasteHarian')">Waste Harian</button>
             <button class="tab-btn" onclick="bukaTab(event, 'tabLeftoverJagoan')">Leftover per Jagoan</button>
+            <button class="tab-btn" onclick="bukaTab(event, 'tabWasteJagoan')">Waste per Jagoan</button>
             <button class="tab-btn" onclick="bukaTab(event, 'tabGrafikSales')">Grafik Penjualan</button>
         </div>
 
@@ -187,6 +188,18 @@
             </div>
             <h3 id="titleTblRekapLeftover" style="font-size: 15px; margin-top: 10px; color: #2d3748;">Detail Leftover per Tanggal</h3>
             <div class="table-responsive" id="containerTblLeftoverJagoan"></div>
+        </div>
+
+        <!-- TAB WASTE PER JAGOAN -->
+        <div id="tabWasteJagoan" class="tab-content">
+            <div class="filter-container" style="background: #fff; border: 1px solid #e2e8f0;">
+                <label>Cari Jagoan:</label>
+                <input type="text" id="searchJagoanWaste" placeholder="Ketik nama Jagoan..." list="listJagoanWasteOptions" oninput="renderRekapJagoanWaste()">
+                <datalist id="listJagoanWasteOptions"></datalist>
+                <button class="btn-reset" onclick="resetSearchJagoanWaste()">Reset Cari</button>
+            </div>
+            <h3 id="titleTblRekapWasteJagoan" style="font-size: 15px; margin-top: 10px; color: #2d3748;">Tabel Rekapitulasi Waste Per Jagoan</h3>
+            <div class="table-responsive" id="containerTblWasteJagoanDetail"></div>
         </div>
 
         <div id="tabGrafikSales" class="tab-content">
@@ -360,7 +373,7 @@
 </div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbw4d64fchfvUUB3GcVByLnzLlyWeiCB52T97NN4dtdpPrWPUaEwW5Nj-AezG7wwQpyZ/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxzPsJbk67qZBCfcheTyjL8huqIgD-XiqP5yY6XhD0nXQC3P8Dua_Et1SAzCrEuMT1Z/exec';
 
     // CEK STATUS LOGIN SAAT HALAMAN DIBUKA
     window.addEventListener('DOMContentLoaded', (event) => {
@@ -539,6 +552,7 @@
         document.getElementById(tabName).classList.add("active");
         evt.currentTarget.classList.add("active");
         if(tabName === 'tabLeftoverJagoan') renderRekapJagoanLeftover();
+        if(tabName === 'tabWasteJagoan') renderRekapJagoanWaste();
     }
 
     function bukaTabSupplies(evt, tabName) {
@@ -702,10 +716,17 @@
             datalistLeftover.innerHTML = '';
             Array.from(setJagoan).sort().forEach(j => { datalistLeftover.innerHTML += `<option value="${j}">`; });
         }
+        let datalistWaste = document.getElementById('listJagoanWasteOptions');
+        if (datalistWaste) {
+            datalistWaste.innerHTML = '';
+            Array.from(setJagoan).sort().forEach(j => { datalistWaste.innerHTML += `<option value="${j}">`; });
+        }
         renderRekapJagoanLeftover();
+        renderRekapJagoanWaste();
     }
 
     function resetSearchJagoanLeftover() { document.getElementById('searchJagoanLeftover').value = ''; renderRekapJagoanLeftover(); }
+    function resetSearchJagoanWaste() { document.getElementById('searchJagoanWaste').value = ''; renderRekapJagoanWaste(); }
 
     function renderRekapJagoanLeftover() {
         let queryNama = document.getElementById('searchJagoanLeftover') ? document.getElementById('searchJagoanLeftover').value.trim().toLowerCase() : '';
@@ -758,6 +779,60 @@
             }
             html += '</tbody></table>';
             document.getElementById('containerTblLeftoverJagoan').innerHTML = html;
+        }
+    }
+
+    function renderRekapJagoanWaste() {
+        let queryNama = document.getElementById('searchJagoanWaste') ? document.getElementById('searchJagoanWaste').value.trim().toLowerCase() : '';
+        let titleEl = document.getElementById('titleTblRekapWasteJagoan');
+        let dataToUse = filteredSalesData.length > 0 ? filteredSalesData : rawSalesData;
+
+        if (queryNama !== '') {
+            titleEl.innerText = `Detail Waste per Tanggal - ${queryNama}`;
+            let matrixWaste = {}, setTanggal = new Set(), setProduk = new Set();
+            dataToUse.forEach(row => {
+                let nama = row[0], tgl = normalizeToISO(row[2]), produk = row[3], waste = parseInt(row[6]) || 0;
+                if (!nama || !tgl || !produk || excludedProducts.some(ex => produk.toLowerCase().trim().includes(ex))) return;
+                if (nama.toLowerCase().includes(queryNama)) {
+                    setTanggal.add(tgl); setProduk.add(produk);
+                    if (!matrixWaste[tgl]) matrixWaste[tgl] = {};
+                    matrixWaste[tgl][produk] = (matrixWaste[tgl][produk] || 0) + waste;
+                }
+            });
+            renderTabelPivotDibalik('containerTblWasteJagoanDetail', matrixWaste, Array.from(setProduk).sort(), Array.from(setTanggal).sort());
+        } else {
+            titleEl.innerText = 'Tabel Rekapitulasi Waste Per Jagoan (Semua Produk)';
+            let matrixJagoan = {}, setJagoan = new Set(), setProduk = new Set();
+            dataToUse.forEach(row => {
+                let nama = row[0], produk = row[3], waste = parseInt(row[6]) || 0;
+                if (!nama || !produk || excludedProducts.some(ex => produk.toLowerCase().trim().includes(ex))) return;
+                setJagoan.add(nama); setProduk.add(produk);
+                if (!matrixJagoan[nama]) matrixJagoan[nama] = {};
+                matrixJagoan[nama][produk] = (matrixJagoan[nama][produk] || 0) + waste;
+            });
+            let arrJagoan = Array.from(setJagoan).sort(), arrProduk = Array.from(setProduk).sort();
+            let html = '<table><thead><tr><th class="text-left">Nama Jagoan</th>';
+            arrProduk.forEach(p => { html += `<th>${p}</th>`; });
+            html += '<th>Total</th></tr></thead><tbody>';
+            if (arrJagoan.length === 0) html += `<tr><td colspan="${arrProduk.length + 2}" style="color:#7f8c8d; padding:15px;">Tidak ada data</td></tr>`;
+            else {
+                let totalPerProduk = {}; arrProduk.forEach(p => { totalPerProduk[p] = 0; });
+                let grandTotal = 0;
+                arrJagoan.forEach(jagoan => {
+                    let totalRow = 0;
+                    html += `<tr><td class="text-left">${jagoan}</td>`;
+                    arrProduk.forEach(p => {
+                        let val = matrixJagoan[jagoan] && matrixJagoan[jagoan][p] ? matrixJagoan[jagoan][p] : 0;
+                        totalRow += val; totalPerProduk[p] += val; html += `<td>${val}</td>`;
+                    });
+                    grandTotal += totalRow; html += `<td><b>${totalRow}</b></td></tr>`;
+                });
+                html += '<tr class="row-total"><td class="text-left">Total</td>';
+                arrProduk.forEach(p => { html += `<td>${totalPerProduk[p]}</td>`; });
+                html += `<td>${grandTotal}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            document.getElementById('containerTblWasteJagoanDetail').innerHTML = html;
         }
     }
 
