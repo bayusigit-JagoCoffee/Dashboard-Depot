@@ -105,7 +105,7 @@
     <div class="upload-section" id="sectionUpload">
         <div class="radio-group">
             <label><input type="radio" name="uploadType" value="sales" checked> Data Settlement Item (Sales_Log)</label>
-            <label><input type="radio" name="uploadType" value="supplies"> Data Supplies (Supplies_Log & Checkout_Restock)</label>
+            <label><input type="radio" name="uploadType" value="supplies"> Data Supplies (Supplies_Log)</label>
         </div>
 
         <div style="margin-bottom: 15px;">
@@ -243,7 +243,6 @@
         <div class="tab-nav">
             <button class="tab-btn active" onclick="bukaTabSupplies(event, 'tabSuppliesHarian')">Supplies Harian</button>
             <button class="tab-btn" onclick="bukaTabSupplies(event, 'tabSuppliesJagoan')">Rekap per Jagoan</button>
-            <button class="tab-btn" onclick="bukaTabSupplies(event, 'tabRestockDrinks')">🍹 Checkout Restock (Drinks)</button>
         </div>
 
         <div id="tabSuppliesHarian" class="tab-content-supplies">
@@ -259,11 +258,6 @@
             </div>
             <h3 id="titleTblRekapJagoan" style="font-size: 15px; margin-top: 10px; color: #2d3748;">Tabel Rekapitulasi Supplies Per Jagoan</h3>
             <div class="table-responsive" id="containerTblSuppliesJagoan"></div>
-        </div>
-
-        <div id="tabRestockDrinks" class="tab-content-supplies" style="display: none;">
-            <h3 style="font-size: 15px; margin-top: 10px; color: #2d3748;">Riwayat Restock Drinks (Checkout Restock)</h3>
-            <div class="table-responsive" id="containerTblRestockDrinks"></div>
         </div>
     </div>
 
@@ -396,7 +390,7 @@
 </div>
 
 <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzxMrZO-HYRolwh-IGvWuYNGmoYnYOdk3o9ILqvP8iUHNKW9BgahQFDJrl_9nTjH868/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbyHbJwSmHFaZDIzGENYzzL5rHpfPWm1HoOC2zl-BCFVkCoSAZz4zaMQOFNQQP85y9WG/exec';
 
     // CEK STATUS LOGIN SAAT HALAMAN DIBUKA
     window.addEventListener('DOMContentLoaded', (event) => {
@@ -526,7 +520,7 @@
 
     const targetSuppliesItems = ['Plastik Sampah (Pcs)', 'Sarung Tangan Plastik (Pack)', 'Plastik Take Away M (Pack)', 'Plastik Take Away L (Pack)', 'Plastik Klip M (Pack)', 'Tissue Kotak Napkin (Pack)', 'Tutup Gelas Plastik (Pcs)'];
 
-    let rawSalesData = [], rawSuppliesData = [], rawStokDepotData = [], rawRiwayatStokBebasData = [], rawRestockData = [], filteredSuppliesData = [], filteredSalesData = [];
+    let rawSalesData = [], rawSuppliesData = [], rawStokDepotData = [], rawRiwayatStokBebasData = [], filteredSuppliesData = [], filteredSalesData = [];
     let chartTotal = null, chartProduk = null, stokGudangUser = {};
 
     function normalizeToISO(raw) {
@@ -585,7 +579,6 @@
         for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
         document.getElementById(tabName).style.display = "block";
         evt.currentTarget.classList.add("active");
-        if(tabName === 'tabRestockDrinks') renderTabelRestockDrinks();
     }
 
     function bukaTabStokBebas(evt, subTabId) {
@@ -735,6 +728,7 @@
         renderTabelPivotDibalik('containerTblWasteHarian', matrixWaste, arrProduk, arrTgl);
         renderGrafikSales(matrixSales, arrProduk, arrTgl);
 
+        // Update dropdown filter produk di tab Leftover & Waste per Jagoan
         updateDropdownFilterProduk(arrProduk);
 
         let datalistLeftover = document.getElementById('listJagoanLeftoverOptions');
@@ -785,6 +779,7 @@
         let titleEl = document.getElementById('titleTblRekapLeftover');
         let dataToUse = filteredSalesData.length > 0 ? filteredSalesData : rawSalesData;
 
+        // Jika filter produk dipilih (bukan ALL)
         if (filterProd !== 'ALL') {
             titleEl.innerText = `Peringkat Leftover Jagoan untuk Produk: ${filterProd}`;
             let mapJagoanProd = {};
@@ -815,6 +810,7 @@
             return;
         }
 
+        // Tampilan Standar (Semua Produk)
         if (queryNama !== '') {
             titleEl.innerText = `Detail Leftover per Tanggal - ${queryNama}`;
             let matrixLeftover = {}, setTanggal = new Set(), setProduk = new Set();
@@ -870,6 +866,7 @@
         let titleEl = document.getElementById('titleTblRekapWasteJagoan');
         let dataToUse = filteredSalesData.length > 0 ? filteredSalesData : rawSalesData;
 
+        // Jika filter produk dipilih (bukan ALL)
         if (filterProd !== 'ALL') {
             titleEl.innerText = `Peringkat Waste Jagoan untuk Produk: ${filterProd}`;
             let mapJagoanProd = {};
@@ -900,6 +897,7 @@
             return;
         }
 
+        // Tampilan Standar (Semua Produk)
         if (queryNama !== '') {
             titleEl.innerText = `Detail Waste per Tanggal - ${queryNama}`;
             let matrixWaste = {}, setTanggal = new Set(), setProduk = new Set();
@@ -1005,22 +1003,6 @@
         datalist.innerHTML = '';
         Array.from(setJagoan).sort().forEach(j => { datalist.innerHTML += `<option value="${j}">`; });
         renderRekapJagoanSupplies();
-        renderTabelRestockDrinks();
-    }
-
-    function renderTabelRestockDrinks() {
-        let container = document.getElementById('containerTblRestockDrinks');
-        if (!container) return;
-        let html = '<table><thead><tr><th>Nama Jagoan</th><th class="text-left">Nama Produk (Item)</th><th>Jumlah Qty</th><th>Tanggal & Jam Terima</th><th>PIC Upload</th><th>Timestamp Upload</th></tr></thead><tbody>';
-        if (!rawRestockData || rawRestockData.length === 0) {
-            html += '<tr><td colspan="6" style="padding:15px; color:#7f8c8d;">Tidak ada data Restock Drinks.</td></tr>';
-        } else {
-            rawRestockData.forEach(r => {
-                html += `<tr><td><b>${r[0]||'-'}</b></td><td class="text-left">${r[1]||'-'}</td><td>${r[2]||0}</td><td>${r[3]||'-'}</td><td>${r[4]||'-'}</td><td><small>${r[5]||'-'}</small></td></tr>`;
-            });
-        }
-        html += '</tbody></table>';
-        container.innerHTML = html;
     }
 
     function resetSearchJagoan() { document.getElementById('searchJagoanSupplies').value = ''; renderRekapJagoanSupplies(); }
@@ -1376,7 +1358,6 @@
             if(data.status === 'sukses') {
                 rawSalesData = data.dataSales || []; rawSuppliesData = data.dataSupplies || [];
                 rawStokDepotData = data.dataStok || []; rawRiwayatStokBebasData = data.dataRiwayat || [];
-                rawRestockData = data.dataRestock || [];
                 terapkanFilterSales(); terapkanFilterSupplies();
             } else { alert("Gagal memuat data: " + (data.pesan || "Error")); }
         })
@@ -1403,8 +1384,8 @@
                         }
                     } else if (uploadType === "supplies") {
                         let item = getVal('Item Name') || getVal('Item');
-                        if (item) {
-                            parsedDataUpload.push([getVal('Name'), item, normalizeToISO(getVal('Approved At') || getVal('Requested At')), parseInt(getVal('Approved Quantity') || getVal('Approved Quant')) || 0, getVal('Jagoan ID'), getVal('Category') || '']);
+                        if (item && isTargetItem(item)) {
+                            parsedDataUpload.push([getVal('Name'), item, normalizeToISO(getVal('Approved At') || getVal('Requested At')), parseInt(getVal('Approved Quantity') || getVal('Approved Quant')) || 0, getVal('Jagoan ID')]);
                         }
                     }
                 });
